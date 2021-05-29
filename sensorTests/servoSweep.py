@@ -23,11 +23,6 @@ def ServoSweep():
         #time.sleep(0.001)
         duty = duty + 0.2
    
-
-    
-
-    
-
 #try:
     #while True:
 ServoSweep()

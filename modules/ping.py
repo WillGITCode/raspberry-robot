@@ -1,10 +1,7 @@
 import time  
-import RPi.GPIO as GPIO  
+import RPi.GPIO as GPIO 
   
-# Use board based pin numbering  
-GPIO.setmode(GPIO.BOARD)  
-  
-def ReadDistance(pin):  
+def GetDistance(pin):  
    GPIO.setup(pin, GPIO.OUT)  
    GPIO.output(pin, 0)  
   
@@ -29,11 +26,3 @@ def ReadDistance(pin):
    # Distance is defined as time/2 (there and back) * speed of sound 34000 cm/s   
    distance=duration*34000/2  
    return distance  
-  
-try:
-    while True:  
-       distance = ReadDistance(16)  
-       print("Distance to object is ",distance," cm or ",distance*.3937, " inches")
-       time.sleep(.5)
-finally:
-    GPIO.cleanup()
