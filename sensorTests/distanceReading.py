@@ -1,10 +1,8 @@
 import time  
 import RPi.GPIO as GPIO  
   
-  
 # Use board based pin numbering  
 GPIO.setmode(GPIO.BOARD)  
-  
   
 def ReadDistance(pin):  
    GPIO.setup(pin, GPIO.OUT)  
