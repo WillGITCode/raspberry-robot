@@ -9,9 +9,13 @@ pin4 = None
 
 def initMotors(pins=[]):
     # fail in not provided 4 pins
-    if len(pins) != 4:
+    if len(pins) == 4:
         try:
             # set global pin vars
+            global pin1
+            global pin2
+            global pin3
+            global pin4
             pin1 = pins[0]
             pin2 = pins[1]
             pin3 = pins[2]
@@ -37,15 +41,15 @@ def driveStop():
 
 def driveForwards():
     GPIO.output(pin1, True)
-    GPIO.output(pin3, False)
-    GPIO.output(pin2, True)
+    GPIO.output(pin2, False)
+    GPIO.output(pin3, True)
     GPIO.output(pin4, False)
 
 
 def driveBackwards():
     GPIO.output(pin1, False)
-    GPIO.output(pin3, True)
-    GPIO.output(pin2, False)
+    GPIO.output(pin2, True)
+    GPIO.output(pin3, False)
     GPIO.output(pin4, True)
 
 
