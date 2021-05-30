@@ -11,7 +11,7 @@ def initMotors(pins=[]):
     # fail in not provided 4 pins
     if len(pins) == 4:
         try:
-            # set global pin vars
+            # set global pin variables
             global pin1
             global pin2
             global pin3
@@ -33,38 +33,53 @@ def initMotors(pins=[]):
 
 
 def driveStop():
-    GPIO.output(pin1, False)
-    GPIO.output(pin2, False)
-    GPIO.output(pin3, False)
-    GPIO.output(pin4, False)
+    try:
+        GPIO.output(pin1, False)
+        GPIO.output(pin2, False)
+        GPIO.output(pin3, False)
+        GPIO.output(pin4, False)
+    except:
+        print("driveStop failed")
 
 
 def driveForwards():
-    GPIO.output(pin1, True)
-    GPIO.output(pin2, False)
-    GPIO.output(pin3, True)
-    GPIO.output(pin4, False)
+    try:
+        GPIO.output(pin1, True)
+        GPIO.output(pin2, False)
+        GPIO.output(pin3, True)
+        GPIO.output(pin4, False)
+    except:
+        print("driveForwards failed")
 
 
 def driveBackwards():
-    GPIO.output(pin1, False)
-    GPIO.output(pin2, True)
-    GPIO.output(pin3, False)
-    GPIO.output(pin4, True)
+    try:
+        GPIO.output(pin1, False)
+        GPIO.output(pin2, True)
+        GPIO.output(pin3, False)
+        GPIO.output(pin4, True)
+    except:
+        print("diveBackwards failed")
 
 
 def spinLeft():
-    GPIO.output(pin1, False)
-    GPIO.output(pin3, True)
-    GPIO.output(pin2, True)
-    GPIO.output(pin4, False)
+    try:
+        GPIO.output(pin1, False)
+        GPIO.output(pin3, True)
+        GPIO.output(pin2, True)
+        GPIO.output(pin4, False)
+    except:
+        print("spinLeft failed")
 
 
 def spinRight():
-    GPIO.output(pin1, True)
-    GPIO.output(pin3, False)
-    GPIO.output(pin2, False)
-    GPIO.output(pin4, True)
+    try:
+        GPIO.output(pin1, True)
+        GPIO.output(pin3, False)
+        GPIO.output(pin2, False)
+        GPIO.output(pin4, True)
+    except:
+        print("spinRight failed")
 
 
 # def turnLeft():

@@ -13,7 +13,7 @@ servo1 = 18
 # Ping 1 pin
 ping1 = 16
 
-
+# ping test
 # try:
 #     while True:
 #         distance = ping.GetDistance(ping1)
@@ -22,16 +22,30 @@ ping1 = 16
 # finally:
 #     GPIO.cleanup()
 
+# motor test
+# try:
+#     motor.driveForwards()
+#     time.sleep(3)
+#     motor.driveBackwards()
+#     time.sleep(3)
+#     motor.spinLeft()
+#     time.sleep(2)
+#     motor.spinRight()
+#     time.sleep(2)
+#     motor.driveStop()
+#     time.sleep(5)
+# finally:
+#     GPIO.cleanup()
+
+# ping/motor test
 try:
-    motor.driveForwards()
-    time.sleep(3)
-    motor.driveBackwards()
-    time.sleep(3)
-    motor.spinLeft()
-    time.sleep(2)
-    motor.spinRight()
-    time.sleep(2)
-    motor.driveStop()
-    time.sleep(5)
+    while True:
+        if ping.GetDistance(ping1) > 10:
+            motor.driveForwards()
+        else:
+            motor.driveBackwards()
+            time.sleep(2)
+            motor.spinLeft()
+            time.sleep(1)
 finally:
     GPIO.cleanup()
