@@ -40,12 +40,12 @@ ping1 = 16
 # ping/motor test
 try:
     while True:
-        if ping.GetDistance(ping1) > 10:
-            motor.driveForwards()
+        if ping.GetDistance(ping1) > 7:
+            motor.DriveForwards()
         else:
-            motor.driveBackwards()
-            time.sleep(2)
-            motor.spinLeft()
+            motor.DriveBackwards()
             time.sleep(1)
+            motor.SpinLeft()
+            time.sleep(.5)
 finally:
     GPIO.cleanup()

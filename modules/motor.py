@@ -32,27 +32,27 @@ def initMotors(pins=[]):
         print("Provide a List declaring 4 board pins")
 
 
-def driveStop():
+def DriveStop():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, False)
         GPIO.output(pin3, False)
         GPIO.output(pin4, False)
     except:
-        print("driveStop failed")
+        print("DriveStop failed")
 
 
-def driveForwards():
+def DriveForwards():
     try:
         GPIO.output(pin1, True)
         GPIO.output(pin2, False)
         GPIO.output(pin3, True)
         GPIO.output(pin4, False)
     except:
-        print("driveForwards failed")
+        print("DriveForwards failed")
 
 
-def driveBackwards():
+def DriveBackwards():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, True)
@@ -62,24 +62,24 @@ def driveBackwards():
         print("diveBackwards failed")
 
 
-def spinLeft():
+def SpinLeft():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin3, True)
         GPIO.output(pin2, True)
         GPIO.output(pin4, False)
     except:
-        print("spinLeft failed")
+        print("SpinLeft failed")
 
 
-def spinRight():
+def SpinRight():
     try:
         GPIO.output(pin1, True)
         GPIO.output(pin3, False)
         GPIO.output(pin2, False)
         GPIO.output(pin4, True)
     except:
-        print("spinRight failed")
+        print("SpinRight failed")
 
 
 # def turnLeft():
