@@ -1,11 +1,14 @@
 # This is the app entry point
 # Setup and state overseen here
 import RPi.GPIO as GPIO
+import pygame
 import time
 from modules import ping
 from modules import motor
 # Use board based pin numbering
 GPIO.setmode(GPIO.BOARD)
+# create window for pygame
+screen = pygame.display.set_mode([240, 160])
 # Motor pins
 motor.initMotors([7, 11, 13, 15])
 # Servo 1 pin
@@ -38,14 +41,54 @@ ping1 = 16
 #     GPIO.cleanup()
 
 # ping/motor test
+# try:
+#     while True:
+#         if ping.GetDistance(ping1) > 7:
+#             motor.DriveForwards()
+#         else:
+#             motor.DriveBackwards()
+#             time.sleep(1)
+#             motor.SpinLeft()
+#             time.sleep(.5)
+# finally:
+#     GPIO.cleanup()
+
+# pygame test
 try:
     while True:
-        if ping.GetDistance(ping1) > 7:
-            motor.DriveForwards()
-        else:
-            motor.DriveBackwards()
-            time.sleep(1)
-            motor.SpinLeft()
-            time.sleep(.5)
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == ord('q'):
+                    pygame.quit()
+                elif event.key == pygame.K_UP:
+                    print("up")
+                    GPIO.output(7, True)
+                    GPIO.output(11, False)
+                    GPIO.output(13, True)
+                    GPIO.output(15, False)
+                elif event.key == pygame.K_DOWN:
+                    print("down")
+                    GPIO.output(7, False)
+                    GPIO.output(11, True)
+                    GPIO.output(13, False)
+                    GPIO.output(15, True)
+                elif event.key == pygame.K_RIGHT:
+                    print("right")
+                    GPIO.output(7, True)
+                    GPIO.output(11, False)
+                    GPIO.output(13, False)
+                    GPIO.output(15, True)
+                elif event.key == pygame.K_LEFT:
+                    print("left")
+                    GPIO.output(7, False)
+                    GPIO.output(11, True)
+                    GPIO.output(13, True)
+                    GPIO.output(15, False)
+            elif event.type == pygame.KEYUP:
+                print("stop")
+                GPIO.output(7, False)
+                GPIO.output(13, False)
+                GPIO.output(11, False)
+                GPIO.output(15, False)
 finally:
     GPIO.cleanup()
