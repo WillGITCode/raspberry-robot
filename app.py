@@ -1,8 +1,7 @@
 # This is the app entry point
 # Setup and state overseen here
 import RPi.GPIO as GPIO
-import pygame
-from inputs import get_key
+# import pygame
 import time
 from modules import ping
 from modules import motor
@@ -100,25 +99,28 @@ ping1 = 16
 # Controller test
 if __name__ == '__main__':
     while True:
-        if gamePad.getProperty('Back') == 1:
+        if (gamePad.getProperty('Back') == 1) or (gamePad.getProperty('Start') == 1) or (gamePad.getProperty('Select') == 1):
+            motor.DriveStop()
+            GPIO.cleanup()
             raise SystemExit(101)
         elif gamePad.getProperty('LeftJoystickY') >= 0.7:
             print("Forward")
-            motor.driveForwards()
-            time.sleep(0.2)
-        elif gamePad.getProperty('LeftJoystickY') <= -0.7:
-            print("Backward")
-            motor.driveForwards()
-            time.sleep(0.2)
-        elif gamePad.getProperty('RightTrigger') >= 0.7:
-            print("SpinRight")
-            motor.spinRight()
-            time.sleep(0.2)
-        elif gamePad.getProperty('LeftTrigger') >= 0.7:
-            print("SpinLeft")
-            motor.spinLeft()
-            time.sleep(0.2)
-        else:
-            print("Stop")
+            while gamePad.getProperty('LeftJoystickY') >= 0.7:
+                motor.DriveForwards()
             motor.DriveStop()
-            time.sleep(0.2)
+        # elif gamePad.getProperty('LeftJoystickY') <= -0.7:
+        #     print("Backward")
+        #     motor.DriveForwards()
+        #     time.sleep(0.2)
+        # elif gamePad.getProperty('RightTrigger') >= 0.7:
+        #     print("SpinRight")
+        #     motor.SpinRight()
+        #     time.sleep(0.2)
+        # elif gamePad.getProperty('LeftTrigger') >= 0.7:
+        #     print("SpinLeft")
+        #     motor.SpinLeft()
+        #     time.sleep(0.2)
+        # else:
+        #     print("Stop")
+        #     motor.DriveStop()
+        #     time.sleep(0.2)
