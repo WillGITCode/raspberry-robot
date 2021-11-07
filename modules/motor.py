@@ -11,8 +11,6 @@ def initMotors(pins=[]):
     # fail in not provided 4 pins
     if len(pins) == 4:
         try:
-            # Start fresh to avoid warnings
-            GPIO.cleanup()
             # set global pin variables
             global pin1
             global pin2

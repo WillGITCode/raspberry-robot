@@ -110,7 +110,7 @@ if __name__ == '__main__':
             motor.DriveStop()
         elif gamePad.getProperty('LeftJoystickY') <= -0.7:
             print("Forward")
-            while gamePad.getProperty('LeftJoystickY') <= 0.7:
+            while gamePad.getProperty('LeftJoystickY') <= -0.7:
                 motor.DriveForwards()
             motor.DriveStop()
         # elif gamePad.getProperty('RightTrigger') >= 0.7:
