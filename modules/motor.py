@@ -11,6 +11,8 @@ def initMotors(pins=[]):
     # fail in not provided 4 pins
     if len(pins) == 4:
         try:
+            # Start fresh to avoid warnings
+            GPIO.cleanup()
             # set global pin variables
             global pin1
             global pin2
@@ -30,6 +32,13 @@ def initMotors(pins=[]):
             print("Failed to init motor pins")
     else:
         print("Provide a List declaring 4 board pins")
+
+
+def MotorShutDown():
+    try:
+        GPIO.cleanup()  # cleanup all GPIO
+    except:
+        print("Motor ShutDown failed")
 
 
 def DriveStop():
