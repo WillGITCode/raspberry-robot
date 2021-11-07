@@ -104,39 +104,33 @@ if __name__ == '__main__':
             motor.DriveStop()
             motor.MotorShutDown()
             raise SystemExit(101)
-        if gamePad.getProperty('LeftJoystickY') >= 0.7:
+        if state[0] >= 0.7:
             # print("Backward")
-            while gamePad.getProperty('LeftJoystickY') >= 0.7:
+            while state[0] >= 0.7:
                 motor.DriveBackwards()
             motor.DriveStop()
-            time.sleep(0.0001)
-        if gamePad.getProperty('LeftJoystickY') <= -0.7:
+        if state[0] <= -0.7:
             # print("Forward")
-            while gamePad.getProperty('LeftJoystickY') <= -0.7:
+            while state[0] <= -0.7:
                 motor.DriveForwards()
             motor.DriveStop()
-            time.sleep(0.0001)
-        if gamePad.getProperty('LeftJoystickX') >= 0.7:
-            # print("Backward")
-            while gamePad.getProperty('LeftJoystickX') >= 0.7:
+        if state[1] >= 0.7:
+            # print("Left")
+            while state[1] >= 0.7:
                 motor.DriveLeft()
             motor.DriveStop()
-            time.sleep(0.0001)
-        if gamePad.getProperty('LeftJoystickX') <= -0.7:
-            # print("Forward")
-            while gamePad.getProperty('LeftJoystickX') <= -0.7:
+        if state[1] <= -0.7:
+            # print("Right")
+            while state[1] <= -0.7:
                 motor.DriveRight()
             motor.DriveStop()
-            time.sleep(0.0001)
-        if gamePad.getProperty('RightTrigger') >= 0.7:
+        if state[2] >= 0.7:
             # print("SpinRight")
-            while gamePad.getProperty('RightTrigger') >= 0.7:
+            while state[2] >= 0.7:
                 motor.SpinRight()
             motor.DriveStop()
-            time.sleep(0.0001)
-        if gamePad.getProperty('LeftTrigger') >= 0.7:
+        if state[3] >= 0.7:
             # print("SpinLeft")
-            while gamePad.getProperty('LeftTrigger') >= 0.7:
+            while state[3] >= 0.7:
                 motor.SpinLeft()
             motor.DriveStop()
-            time.sleep(0.0001)
