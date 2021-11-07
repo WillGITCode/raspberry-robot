@@ -2,13 +2,17 @@
 # Setup and state overseen here
 import RPi.GPIO as GPIO
 import pygame
+from inputs import get_key
 import time
 from modules import ping
 from modules import motor
+from modules import controller
 # Use board based pin numbering
 GPIO.setmode(GPIO.BOARD)
 # create window for pygame
-screen = pygame.display.set_mode([240, 160])
+# screen = pygame.display.set_mode([240, 160])
+# create controller
+gamePad = controller.XboxController()
 # Motor pins
 motor.initMotors([7, 11, 13, 15])
 # Servo 1 pin
@@ -54,41 +58,67 @@ ping1 = 16
 #     GPIO.cleanup()
 
 # pygame test
-try:
+# try:
+#     while True:
+#         for event in pygame.event.get():
+#             if event.type == pygame.KEYDOWN:
+#                 if event.key == ord('q'):
+#                     pygame.quit()
+#                 elif event.key == pygame.K_UP:
+#                     print("up")
+#                     GPIO.output(7, True)
+#                     GPIO.output(11, False)
+#                     GPIO.output(13, True)
+#                     GPIO.output(15, False)
+#                 elif event.key == pygame.K_DOWN:
+#                     print("down")
+#                     GPIO.output(7, False)
+#                     GPIO.output(11, True)
+#                     GPIO.output(13, False)
+#                     GPIO.output(15, True)
+#                 elif event.key == pygame.K_RIGHT:
+#                     print("right")
+#                     GPIO.output(7, True)
+#                     GPIO.output(11, False)
+#                     GPIO.output(13, False)
+#                     GPIO.output(15, True)
+#                 elif event.key == pygame.K_LEFT:
+#                     print("left")
+#                     GPIO.output(7, False)
+#                     GPIO.output(11, True)
+#                     GPIO.output(13, True)
+#                     GPIO.output(15, False)
+#             elif event.type == pygame.KEYUP:
+#                 print("stop")
+#                 GPIO.output(7, False)
+#                 GPIO.output(13, False)
+#                 GPIO.output(11, False)
+#                 GPIO.output(15, False)
+# finally:
+#     GPIO.cleanup()
+
+# Controller test
+if __name__ == '__main__':
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == ord('q'):
-                    pygame.quit()
-                elif event.key == pygame.K_UP:
-                    print("up")
-                    GPIO.output(7, True)
-                    GPIO.output(11, False)
-                    GPIO.output(13, True)
-                    GPIO.output(15, False)
-                elif event.key == pygame.K_DOWN:
-                    print("down")
-                    GPIO.output(7, False)
-                    GPIO.output(11, True)
-                    GPIO.output(13, False)
-                    GPIO.output(15, True)
-                elif event.key == pygame.K_RIGHT:
-                    print("right")
-                    GPIO.output(7, True)
-                    GPIO.output(11, False)
-                    GPIO.output(13, False)
-                    GPIO.output(15, True)
-                elif event.key == pygame.K_LEFT:
-                    print("left")
-                    GPIO.output(7, False)
-                    GPIO.output(11, True)
-                    GPIO.output(13, True)
-                    GPIO.output(15, False)
-            elif event.type == pygame.KEYUP:
-                print("stop")
-                GPIO.output(7, False)
-                GPIO.output(13, False)
-                GPIO.output(11, False)
-                GPIO.output(15, False)
-finally:
-    GPIO.cleanup()
+        if gamePad.getProperty('Back') == 1:
+            raise SystemExit(101)
+        elif gamePad.getProperty('LeftJoystickY') >= 0.7:
+            print("Forward")
+            motor.driveForwards()
+            time.sleep(0.2)
+        elif gamePad.getProperty('LeftJoystickY') <= -0.7:
+            print("Backward")
+            motor.driveForwards()
+            time.sleep(0.2)
+        elif gamePad.getProperty('RightTrigger') >= 0.7:
+            print("SpinRight")
+            motor.spinRight()
+            time.sleep(0.2)
+        elif gamePad.getProperty('LeftTrigger') >= 0.7:
+            print("SpinLeft")
+            motor.spinLeft()
+            time.sleep(0.2)
+        else:
+            print("Stop")
+            motor.DriveStop()
+            time.sleep(0.2)
