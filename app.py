@@ -99,29 +99,42 @@ ping1 = 16
 # Controller test
 if __name__ == '__main__':
     while True:
-        if (gamePad.getProperty('Back') == 1) or (gamePad.getProperty('Start') == 1) or (gamePad.getProperty('Select') == 1):
+        state = gamePad.getState()
+        if state[4] == 1 or state[5]:
             motor.DriveStop()
             motor.MotorShutDown()
             raise SystemExit(101)
-        elif gamePad.getProperty('LeftJoystickY') >= 0.7:
+        if gamePad.getProperty('LeftJoystickY') >= 0.7:
             # print("Backward")
             while gamePad.getProperty('LeftJoystickY') >= 0.7:
                 motor.DriveBackwards()
             motor.DriveStop()
             time.sleep(0.0001)
-        elif gamePad.getProperty('LeftJoystickY') <= -0.7:
+        if gamePad.getProperty('LeftJoystickY') <= -0.7:
             # print("Forward")
             while gamePad.getProperty('LeftJoystickY') <= -0.7:
                 motor.DriveForwards()
             motor.DriveStop()
             time.sleep(0.0001)
-        elif gamePad.getProperty('RightTrigger') >= 0.7:
+        if gamePad.getProperty('LeftJoystickX') >= 0.7:
+            # print("Backward")
+            while gamePad.getProperty('LeftJoystickX') >= 0.7:
+                motor.DriveLeft()
+            motor.DriveStop()
+            time.sleep(0.0001)
+        if gamePad.getProperty('LeftJoystickX') <= -0.7:
+            # print("Forward")
+            while gamePad.getProperty('LeftJoystickX') <= -0.7:
+                motor.DriveRight()
+            motor.DriveStop()
+            time.sleep(0.0001)
+        if gamePad.getProperty('RightTrigger') >= 0.7:
             # print("SpinRight")
             while gamePad.getProperty('RightTrigger') >= 0.7:
                 motor.SpinRight()
             motor.DriveStop()
             time.sleep(0.0001)
-        elif gamePad.getProperty('LeftTrigger') >= 0.7:
+        if gamePad.getProperty('LeftTrigger') >= 0.7:
             # print("SpinLeft")
             while gamePad.getProperty('LeftTrigger') >= 0.7:
                 motor.SpinLeft()

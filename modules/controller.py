@@ -1,8 +1,7 @@
 import threading
-import time
 import math
+import time
 from inputs import get_gamepad
-from inputs import DeviceManager
 
 
 class XboxController(object):
@@ -36,13 +35,14 @@ class XboxController(object):
         self._monitor_thread.daemon = True
         self._monitor_thread.start()
 
-    def read(self):
-        start = self.Back  # for some reasion select and start are reversed
-        jx = self.LeftJoystickX
-        jy = self.LeftJoystickY
-        rt = self.RightTrigger
-        lt = self.LeftTrigger
-        return [jx, jy, lt, rt, start]
+    def getState(self):
+        return [self.LeftJoystickY,
+                self.LeftJoystickX,
+                self.LeftTrigger,
+                self.RightTrigger,
+                self.Start,
+                self.Back,
+                self.A]
 
     def getProperty(self, property):
         if not isinstance(property, str):
@@ -51,10 +51,9 @@ class XboxController(object):
             return getattr(self, property)
 
     def _monitor_controller(self):
-        devices = DeviceManager()
         while True:
-            if devices.gamepads.count > 0:
-                events = devices.gamepads[0]._do_iter()
+            try:
+                events = get_gamepad()
                 if events is not None:
                     for event in events:
                         # print(event.ev_type, event.code, event.state)
@@ -104,10 +103,13 @@ class XboxController(object):
                             self.UpDPad = event.state
                         elif event.code == 'BTN_TRIGGER_HAPPY4':
                             self.DownDPad = event.state
+            except:
+                # wait/try again
+                time.sleep(0.0001)
 
 
-if __name__ == '__main__':
-    joy = XboxController()
-    while True:
-        s = joy.read()
-        # print(joy.read())
+# if __name__ == '__main__':
+#     joy = XboxController()
+#     while True:
+#         s = joy.getState()
+#         print(s)

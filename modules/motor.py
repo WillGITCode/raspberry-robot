@@ -69,6 +69,26 @@ def DriveBackwards():
         print("diveBackwards failed")
 
 
+def DriveLeft():
+    try:
+        GPIO.output(pin1, True)
+        GPIO.output(pin2, False)
+        GPIO.output(pin3, False)
+        GPIO.output(pin4, False)
+    except:
+        print("DriveLeft failed")
+
+
+def DriveRight():
+    try:
+        GPIO.output(pin1, False)
+        GPIO.output(pin2, False)
+        GPIO.output(pin3, True)
+        GPIO.output(pin4, False)
+    except:
+        print("DriveRight failed")
+
+
 def SpinLeft():
     try:
         GPIO.output(pin1, False)
@@ -87,9 +107,3 @@ def SpinRight():
         GPIO.output(pin4, True)
     except:
         print("SpinRight failed")
-
-
-# def turnLeft():
-
-
-# def turnRight():
