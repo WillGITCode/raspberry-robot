@@ -104,32 +104,32 @@ if __name__ == '__main__':
             motor.DriveStop()
             motor.MotorShutDown()
             raise SystemExit(101)
-        if state[0] >= 0.7:
+        elif state[0] >= 0.7:
             # print("Backward")
             while state[0] >= 0.7:
                 motor.DriveBackwards()
             motor.DriveStop()
-        if state[0] <= -0.7:
+        elif state[0] <= -0.7:
             # print("Forward")
             while state[0] <= -0.7:
                 motor.DriveForwards()
             motor.DriveStop()
-        if state[1] >= 0.7:
+        elif state[1] >= 0.7:
             # print("Left")
             while state[1] >= 0.7:
                 motor.DriveLeft()
             motor.DriveStop()
-        if state[1] <= -0.7:
+        elif state[1] <= -0.7:
             # print("Right")
             while state[1] <= -0.7:
                 motor.DriveRight()
             motor.DriveStop()
-        if state[2] >= 0.7:
+        elif state[2] >= 0.7:
             # print("SpinRight")
             while state[2] >= 0.7:
                 motor.SpinRight()
             motor.DriveStop()
-        if state[3] >= 0.7:
+        elif state[3] >= 0.7:
             # print("SpinLeft")
             while state[3] >= 0.7:
                 motor.SpinLeft()
