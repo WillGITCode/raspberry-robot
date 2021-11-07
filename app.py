@@ -113,15 +113,13 @@ if __name__ == '__main__':
             while gamePad.getProperty('LeftJoystickY') <= -0.7:
                 motor.DriveForwards()
             motor.DriveStop()
-        # elif gamePad.getProperty('RightTrigger') >= 0.7:
-        #     print("SpinRight")
-        #     motor.SpinRight()
-        #     time.sleep(0.2)
-        # elif gamePad.getProperty('LeftTrigger') >= 0.7:
-        #     print("SpinLeft")
-        #     motor.SpinLeft()
-        #     time.sleep(0.2)
-        # else:
-        #     print("Stop")
-        #     motor.DriveStop()
-        #     time.sleep(0.2)
+        elif gamePad.getProperty('RightTrigger') >= 0.7:
+            print("SpinRight")
+            while gamePad.getProperty('RightTrigger') >= 0.7:
+                motor.SpinRight()
+            motor.DriveStop()
+        elif gamePad.getProperty('LeftTrigger') >= 0.7:
+            print("SpinLeft")
+            while gamePad.getProperty('LeftTrigger') >= 0.7:
+                motor.SpinLeft()
+            motor.DriveStop()
