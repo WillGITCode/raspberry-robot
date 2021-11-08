@@ -16,7 +16,7 @@ servo1 = 18
 ping1 = 16
 
 
-def avoidObstacles():
+def AvoidObstacles():
     if ping.GetDistance(ping1) > 7:
         motor.DriveForwards()
     else:
@@ -36,7 +36,7 @@ if __name__ == '__main__':
                     raise SystemExit(101)
                 if gamePad.getProperty('A') == 1:
                     while gamePad.getProperty('A') != 1:
-                        avoidObstacles()
+                        AvoidObstacles()
                 elif gamePad.getProperty('LeftJoystickY') >= 0.7:
                     # print("Backward")
                     while gamePad.getProperty('LeftJoystickY') >= 0.7:
