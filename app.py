@@ -6,10 +6,6 @@ import time
 from modules import ping
 from modules import motor
 from modules import controller
-# Use board based pin numbering
-GPIO.setmode(GPIO.BOARD)
-# create window for pygame
-# screen = pygame.display.set_mode([240, 160])
 # create controller
 gamePad = controller.XboxController()
 # Motor pins
@@ -98,39 +94,38 @@ ping1 = 16
 
 # Controller test
 if __name__ == '__main__':
-    while True:
-        state = gamePad.getState()
-        if state[4] == 1 or state[5]:
-            motor.DriveStop()
-            motor.MotorShutDown()
-            raise SystemExit(101)
-        elif state[0] >= 0.7:
-            # print("Backward")
-            while state[0] >= 0.7:
-                motor.DriveBackwards()
-            motor.DriveStop()
-        elif state[0] <= -0.7:
-            # print("Forward")
-            while state[0] <= -0.7:
-                motor.DriveForwards()
-            motor.DriveStop()
-        elif state[1] >= 0.7:
-            # print("Left")
-            while state[1] >= 0.7:
-                motor.DriveLeft()
-            motor.DriveStop()
-        elif state[1] <= -0.7:
-            # print("Right")
-            while state[1] <= -0.7:
-                motor.DriveRight()
-            motor.DriveStop()
-        elif state[2] >= 0.7:
-            # print("SpinRight")
-            while state[2] >= 0.7:
-                motor.SpinRight()
-            motor.DriveStop()
-        elif state[3] >= 0.7:
-            # print("SpinLeft")
-            while state[3] >= 0.7:
-                motor.SpinLeft()
-            motor.DriveStop()
+    try:
+        while True:
+            try:
+                if gamePad.getProperty('Start') == 1 or gamePad.getProperty('Back'):
+                    motor.DriveStop()
+                    raise SystemExit(101)
+                elif gamePad.getProperty('LeftJoystickY') >= 0.7:
+                    # print("Backward")
+                    while gamePad.getProperty('LeftJoystickY') >= 0.7:
+                        motor.DriveBackwards()
+                elif gamePad.getProperty('LeftJoystickY') <= -0.7:
+                    # print("Forward")
+                    while gamePad.getProperty('LeftJoystickY') <= -0.7:
+                        motor.DriveForwards()
+                    # print("Left")
+                    while gamePad.getProperty('LeftJoystickX') >= 0.7:
+                        motor.DriveLeft()
+                elif gamePad.getProperty('LeftJoystickX') <= -0.7:
+                    # print("Right")
+                    while gamePad.getProperty('LeftJoystickX') <= -0.7:
+                        motor.DriveRight()
+                elif gamePad.getProperty('LeftTrigger') >= 0.7:
+                    # print("SpinRight")
+                    while gamePad.getProperty('LeftTrigger') >= 0.7:
+                        motor.SpinRight()
+                elif gamePad.getProperty('RightTrigger') >= 0.7:
+                    # print("SpinLeft")
+                    while gamePad.getProperty('RightTrigger') >= 0.7:
+                        motor.SpinLeft()
+                else:
+                    motor.DriveStop()
+            finally:
+                time.sleep(0.0001)
+    finally:
+        GPIO.cleanup()

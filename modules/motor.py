@@ -32,19 +32,13 @@ def initMotors(pins=[]):
         print("Provide a List declaring 4 board pins")
 
 
-def MotorShutDown():
-    try:
-        GPIO.cleanup()  # cleanup all GPIO
-    except:
-        print("Motor ShutDown failed")
-
-
 def DriveStop():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, False)
         GPIO.output(pin3, False)
         GPIO.output(pin4, False)
+        time.sleep(0.0001)
     except:
         print("DriveStop failed")
 
