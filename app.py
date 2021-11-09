@@ -35,6 +35,7 @@ if __name__ == '__main__':
                     motor.DriveStop()
                     raise SystemExit(101)
                 if gamePad.getProperty('A') == 1:
+                    time.sleep(.001)
                     while gamePad.getProperty('A') != 1:
                         AvoidObstacles()
                 elif gamePad.getProperty('LeftJoystickY') >= 0.7:
