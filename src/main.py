@@ -1,7 +1,6 @@
 # This is the app entry point
 # Setup and state overseen here
 import RPi.GPIO as GPIO
-# import pygame
 import time
 from modules import ping
 from modules import motor
@@ -16,7 +15,7 @@ servo1 = 18
 ping1 = 16
 
 
-def AvoidObstacles():
+def avoid_obstacles():
     if ping.GetDistance(ping1) > 7:
         motor.DriveForwards()
     else:
@@ -37,7 +36,7 @@ if __name__ == '__main__':
                 if gamePad.getProperty('A') == 1:
                     time.sleep(.001)
                     while gamePad.getProperty('A') != 1:
-                        AvoidObstacles()
+                        avoid_obstacles()
                 elif gamePad.getProperty('LeftJoystickY') >= 0.7:
                     # print("Backward")
                     while gamePad.getProperty('LeftJoystickY') >= 0.7:
