@@ -34,7 +34,7 @@ class XboxController(object):
         self._monitor_thread.daemon = True
         self._monitor_thread.start()
 
-    def getState(self):
+    def get_state(self):
         return [self.LeftJoystickY,
                 self.LeftJoystickX,
                 self.LeftTrigger,
@@ -43,7 +43,7 @@ class XboxController(object):
                 self.Back,
                 self.A]
 
-    def getProperty(self, property):
+    def get_property(self, property):
         if not isinstance(property, str):
             raise TypeError('Expected a string')
         if hasattr(self, property):
@@ -54,7 +54,6 @@ class XboxController(object):
             events = get_gamepad()
             if events is not None:
                 for event in events:
-                    # print(event.ev_type, event.code, event.state)
                     if event.code == 'ABS_Y':
                         self.LeftJoystickY = event.state / \
                             XboxController.MAX_JOY_VAL  # normalize between -1 and 1
@@ -101,10 +100,3 @@ class XboxController(object):
                         self.UpDPad = event.state
                     elif event.code == 'BTN_TRIGGER_HAPPY4':
                         self.DownDPad = event.state
-
-
-# if __name__ == '__main__':
-#     joy = XboxController()
-#     while True:
-#         s = joy.getState()
-#         print(s)

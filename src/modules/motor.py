@@ -7,7 +7,7 @@ pin3 = None
 pin4 = None
 
 
-def initMotors(pins=[]):
+def init_motor_pins(pins=[]):
     # fail in not provided 4 pins
     if len(pins) == 4:
         try:
@@ -32,7 +32,7 @@ def initMotors(pins=[]):
         print("Provide a List declaring 4 board pins")
 
 
-def DriveStop():
+def drive_stop():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, False)
@@ -40,20 +40,20 @@ def DriveStop():
         GPIO.output(pin4, False)
         time.sleep(0.0001)
     except:
-        print("DriveStop failed")
+        print("drive_stop failed")
 
 
-def DriveForwards():
+def drive_forwards():
     try:
         GPIO.output(pin1, True)
         GPIO.output(pin2, False)
         GPIO.output(pin3, True)
         GPIO.output(pin4, False)
     except:
-        print("DriveForwards failed")
+        print("drive_forwards failed")
 
 
-def DriveBackwards():
+def drive_backwards():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, True)
@@ -63,41 +63,41 @@ def DriveBackwards():
         print("diveBackwards failed")
 
 
-def DriveLeft():
+def drive_left():
     try:
         GPIO.output(pin1, True)
         GPIO.output(pin2, False)
         GPIO.output(pin3, False)
         GPIO.output(pin4, False)
     except:
-        print("DriveLeft failed")
+        print("drive_left failed")
 
 
-def DriveRight():
+def drive_right():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin2, False)
         GPIO.output(pin3, True)
         GPIO.output(pin4, False)
     except:
-        print("DriveRight failed")
+        print("drive_right failed")
 
 
-def SpinLeft():
+def spin_left():
     try:
         GPIO.output(pin1, False)
         GPIO.output(pin3, True)
         GPIO.output(pin2, True)
         GPIO.output(pin4, False)
     except:
-        print("SpinLeft failed")
+        print("spin_left failed")
 
 
-def SpinRight():
+def spin_right():
     try:
         GPIO.output(pin1, True)
         GPIO.output(pin3, False)
         GPIO.output(pin2, False)
         GPIO.output(pin4, True)
     except:
-        print("SpinRight failed")
+        print("spin_right failed")

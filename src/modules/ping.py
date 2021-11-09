@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import time
 
 
-def GetDistance(pin):
+def get_distance(pin):
     try:
         # set pin to write
         GPIO.setup(pin, GPIO.OUT)
