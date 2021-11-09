@@ -1,11 +1,11 @@
-import threading
-import math
+from threading import Thread
+from math import pow
 from inputs import get_gamepad
 
 
 class XboxController(object):
-    MAX_TRIG_VAL = math.pow(2, 8)
-    MAX_JOY_VAL = math.pow(2, 15)
+    MAX_TRIG_VAL = pow(2, 8)
+    MAX_JOY_VAL = pow(2, 15)
 
     def __init__(self):
         self.LeftJoystickY = 0
@@ -29,7 +29,7 @@ class XboxController(object):
         self.UpDPad = 0
         self.DownDPad = 0
 
-        self._monitor_thread = threading.Thread(
+        self._monitor_thread = Thread(
             target=self._monitor_controller, args=())
         self._monitor_thread.daemon = True
         self._monitor_thread.start()

@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import time
+from time import sleep
 from modules import ping
 from modules import motor
 from modules import controller
@@ -18,9 +18,9 @@ def avoid_obstacles():
         motor.drive_forwards()
     else:
         motor.drive_backwards()
-        time.sleep(1)
+        sleep(1)
         motor.spin_left()
-        time.sleep(.5)
+        sleep(.5)
 
 
 # Entry point
@@ -32,7 +32,7 @@ def main():
                     motor.drive_stop()
                     raise SystemExit(101)
                 if gamePad.get_property('A') == 1:
-                    time.sleep(.001)
+                    sleep(.001)
                     while gamePad.get_property('A') != 1:
                         avoid_obstacles()
                 elif gamePad.get_property('LeftJoystickY') >= 0.7:
@@ -62,7 +62,7 @@ def main():
                 else:
                     motor.drive_stop()
             finally:
-                time.sleep(0.0001)
+                sleep(0.0001)
     finally:
         GPIO.cleanup()
 
