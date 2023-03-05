@@ -1,70 +1,103 @@
-import RPi.GPIO as GPIO
 from time import sleep
-from modules import ping_sensor
-from modules import motor_board
-from modules import control_surfaces
-# create controller
-gamePad = control_surfaces.XboxController()
-# Motor board pins
-motor_board.init_motor_pins([7, 11, 13, 15])
-# Ping sensor
-ping1 = ping_sensor.PingSensor(16)
-# Servo 1 pin
-servo1 = 18
 
 
-def avoid_obstacles():
-    if ping1.get_distance() > 7:
-        motor_board.drive_forwards()
-    else:
-        motor_board.drive_backwards()
+class State:
+    def run(self):
+        pass
+
+    def next(self):
+        pass
+
+
+class AvoidObstacles(State):
+    def run(self):
+        # Check for obstacles and navigate around them
+        print("Check for obstacles and navigate around them")
         sleep(1)
-        motor_board.spin_left()
-        sleep(.5)
+        pass
+
+    def next(self):
+        # Switch to another state if necessary
+        print("Leaving AvoidObstacles")
+        pass
+
+
+class VoiceCommand(State):
+    def run(self):
+        # Listen for voice commands and respond appropriately
+        print("Listen for voice commands and respond appropriately")
+        sleep(1)
+        pass
+
+    def next(self):
+        # Switch to another state if necessary
+        print("Leaving VoiceCommand")
+        pass
+
+
+class MotorControl(State):
+    def run(self):
+        # Control the robot's motors based on input from a wireless controller
+        print("Control the robot's motors based on input from a wireless controller")
+        sleep(1)
+        pass
+
+    def next(self):
+        # Switch to another state if necessary
+        print("Leaving MotorControl")
+        pass
+
+
+class StateMachine:
+    def __init__(self):
+        self.avoid_obstacles = AvoidObstacles()
+        self.voice_command = VoiceCommand()
+        self.motor_control = MotorControl()
+        self.state = self.avoid_obstacles
+
+    def run(self):
+        while True:
+            self.state.run()
+            self.state.next()
+
+    def set_state(self, state):
+        self.state = state
+
+    def get_state(self):
+        return self.state
+
+    def change_state(self):
+        # Define a mapping of user input to state objects
+        state_map = {'1': self.avoid_obstacles,
+                     '2': self.voice_command,
+                     '3': self.motor_control}
+
+        # Display the options to the user
+        print("Select a state:")
+        print("1. Avoid Obstacles")
+        print("2. Voice Command")
+        print("3. Motor Control")
+
+        # Get user input and change the state accordingly
+        choice = input()
+        if choice in state_map:
+            self.set_state(state_map[choice])
+        else:
+            print("Invalid choice. Please try again.")
+
+        # Print the current state
+        print("Current state:", type(self.state).__name__)
 
 
 # Entry point
 def main():
     try:
+        state_machine = StateMachine()
         while True:
-            try:
-                if gamePad.get_property('Start') == 1 or gamePad.get_property('Back'):
-                    motor_board.drive_stop()
-                    raise SystemExit(101)
-                if gamePad.get_property('A') == 1:
-                    sleep(.001)
-                    while gamePad.get_property('A') != 1:
-                        avoid_obstacles()
-                elif gamePad.get_property('LeftJoystickY') >= 0.7:
-                    # print("Backward")
-                    while gamePad.get_property('LeftJoystickY') >= 0.7:
-                        motor_board.drive_backwards()
-                elif gamePad.get_property('LeftJoystickY') <= -0.7:
-                    # print("Forward")
-                    while gamePad.get_property('LeftJoystickY') <= -0.7:
-                        motor_board.drive_forwards()
-                elif gamePad.get_property('LeftJoystickX') >= 0.7:
-                    # print("Left")
-                    while gamePad.get_property('LeftJoystickX') >= 0.7:
-                        motor_board.drive_left()
-                elif gamePad.get_property('LeftJoystickX') <= -0.7:
-                    # print("Right")
-                    while gamePad.get_property('LeftJoystickX') <= -0.7:
-                        motor_board.drive_right()
-                elif gamePad.get_property('LeftTrigger') >= 0.7:
-                    # print("spin_right")
-                    while gamePad.get_property('LeftTrigger') >= 0.7:
-                        motor_board.spin_right()
-                elif gamePad.get_property('RightTrigger') >= 0.7:
-                    # print("spin_left")
-                    while gamePad.get_property('RightTrigger') >= 0.7:
-                        motor_board.spin_left()
-                else:
-                    motor_board.drive_stop()
-            finally:
-                sleep(0.0001)
+            state_machine.change_state()
+            state_machine.run()
     finally:
-        GPIO.cleanup()
+        print("Exiting main")
 
 
 if __name__ == '__main__':
