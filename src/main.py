@@ -1,4 +1,5 @@
 from state.robot_state_machine import RobotStateMachine
+import RPi.GPIO as GPIO
 
 
 def main():
@@ -23,6 +24,7 @@ def main():
             state_machine.run()
     finally:
         print("Exiting main")
+        GPIO.cleanup()
 
 
 if __name__ == '__main__':
