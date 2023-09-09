@@ -27,6 +27,7 @@ class RobotStateMachine:
 
     def set_state(self, name):
         self.current_state = self.states[name]
+        self.current_state.run()
 
     def get_state(self):
         for key, value in self.states.items():
