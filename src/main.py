@@ -11,7 +11,10 @@ def main():
         state_machine.set_state("avoid_obstacles")
 
         while True:
-            if state_machine.get_controller().get_property('Start') == 1 or state_machine.get_controller().get_property('Back'):
+            if state_machine.get_controller().get_property('Back'):
+                raise SystemExit(101)
+
+            if state_machine.get_controller().get_property('Start'):
                 state_machine.set_state("idle")
 
             if state_machine.get_controller().get_property('A') == 1:
