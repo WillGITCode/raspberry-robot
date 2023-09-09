@@ -11,13 +11,13 @@ def main():
         state_machine.set_state("avoid_obstacles")
 
         while True:
-            if state_machine.get_controller.get_property('Start') == 1 or state_machine.get_controller.get_property('Back'):
+            if state_machine.get_controller().get_property('Start') == 1 or state_machine.get_controller().get_property('Back'):
                 state_machine.set_state("idle")
 
-            if state_machine.get_controller.get_property('A') == 1:
+            if state_machine.get_controller().get_property('A') == 1:
                 state_machine.set_state("avoid_obstacles")
 
-            if state_machine.get_controller.get_property('Y') == 1:
+            if state_machine.get_controller().get_property('Y') == 1:
                 state_machine.set_state("remote_control_navigation")
 
             # Run the state machine
