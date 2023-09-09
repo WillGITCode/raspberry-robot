@@ -21,7 +21,9 @@ def main():
                 state_machine.set_state("remote_control_navigation")
 
             # Run the state machine
-            state_machine.run()
+            print(state_machine.get_state())
+
+            # state_machine.run()
     finally:
         print("Exiting main")
         GPIO.cleanup()

@@ -28,9 +28,12 @@ class RobotStateMachine:
     def set_state(self, name):
         self.current_state = self.states[name]
 
+    def get_state(self):
+        return self.current_state
+
     def run(self):
         while self.current_state:
-            self.current_state.run(self)
+            self.current_state.run()
 
     def get_controller(self):
         return self.controller
