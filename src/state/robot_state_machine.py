@@ -29,7 +29,9 @@ class RobotStateMachine:
         self.current_state = self.states[name]
 
     def get_state(self):
-        return self.current_state
+        for key, value in self.states.items():
+            if value == self.current_state:
+                return key
 
     def run(self):
         while self.current_state:

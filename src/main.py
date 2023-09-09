@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 
 
 def main():
+    state_changed = True
     try:
         # Create an instance of the StateMachine class
         state_machine = RobotStateMachine()
@@ -20,10 +21,11 @@ def main():
             if state_machine.get_controller().get_property('Y') == 1:
                 state_machine.set_state("remote_control_navigation")
 
-            # Run the state machine
-            print(state_machine.get_state())
-
-            # state_machine.run()
+            # Check if the state has changed
+            if state_changed:
+                state_machine.run()
+                print(state_machine.get_state())
+                state_changed = False
     finally:
         print("Exiting main")
         GPIO.cleanup()
