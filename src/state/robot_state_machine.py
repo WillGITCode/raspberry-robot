@@ -31,3 +31,6 @@ class RobotStateMachine:
     def run(self):
         while self.current_state:
             self.current_state.run(self)
+
+    def get_controller(self):
+        return self.controller
