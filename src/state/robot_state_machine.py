@@ -34,8 +34,10 @@ class RobotStateMachine:
                 return key
 
     def run(self):
-        while self.current_state:
+        while True:
             self.current_state.run()
+            if self.current_state != self.states[self.current_state.get_next_state()]:
+                break
 
     def get_controller(self):
         return self.controller
