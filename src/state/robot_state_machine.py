@@ -21,13 +21,21 @@ class RobotStateMachine:
             "remote_control_navigation": RemoteControlNavigation(self.motor_controller, self.controller),
         }
         self.current_state = "avoid_obstacles"
+        self.next_state = ""
 
     def add_state(self, name, state):
         self.states[name] = state
 
     def set_state(self, name):
         self.current_state = self.states[name]
-        self.current_state.run()
+
+    def set_next_state(self, name):
+        # if the name argument is in the states dictionary and the current state is not the same as the name argument
+        # then set the current state to the name argument
+        if name in self.states and self.current_state != self.states[name]:
+            self.next_state(name)
+            # reset next state to empty string
+            self.next_state = ""
 
     def get_state(self):
         for key, value in self.states.items():
@@ -35,10 +43,9 @@ class RobotStateMachine:
                 return key
 
     def run(self):
-        while True:
-            self.current_state.run()
-            if self.current_state != self.states[self.current_state.get_next_state()]:
-                break
+        if self.next_state != "":
+            self.set_state(self.next_state)
+        self.current_state.run()
 
     def get_controller(self):
         return self.controller

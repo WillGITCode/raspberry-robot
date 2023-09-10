@@ -15,13 +15,15 @@ def main():
                 raise SystemExit(101)
 
             if state_machine.get_controller().get_property('Start'):
-                state_machine.set_state("idle")
+                state_machine.set_next_state("idle")
 
             if state_machine.get_controller().get_property('A') == 1:
-                state_machine.set_state("avoid_obstacles")
+                state_machine.set_next_state("avoid_obstacles")
 
             if state_machine.get_controller().get_property('Y') == 1:
-                state_machine.set_state("remote_control_navigation")
+                state_machine.set_next_state("remote_control_navigation")
+
+            state_machine.run()
     finally:
         print("Exiting main")
         GPIO.cleanup()
