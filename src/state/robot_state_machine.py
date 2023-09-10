@@ -14,7 +14,7 @@ class RobotStateMachine:
         self.forward_ping_sensor = PingSensor(16)
         # Init motor controller
         self.motor_controller = MotorController()
-        self.motor_controller.init_motor_pins([7, 11, 13, 15])
+        self.motor_controller.init_motor_pins([18, 11, 13, 15])
         self.states = {
             "idle": IdleState(self.motor_controller),
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor),
@@ -33,7 +33,7 @@ class RobotStateMachine:
         # if the name argument is in the states dictionary and the current state is not the same as the name argument
         # then set the current state to the name argument
         if name in self.states and self.current_state != self.states[name]:
-            self.next_state(name)
+            self.set_state(name)
             # reset next state to empty string
             self.next_state = ""
 

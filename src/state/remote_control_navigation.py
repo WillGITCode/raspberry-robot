@@ -18,13 +18,13 @@ class RemoteControlNavigation:
                 while self.remote_controller.get_property('LeftJoystickY') <= -0.7:
                     self.motor_controller.drive_forwards()
             elif self.remote_controller.get_property('LeftJoystickX') >= 0.7:
-                print("Left")
-                while self.remote_controller.get_property('LeftJoystickX') >= 0.7:
-                    self.motor_controller.drive_left()
-            elif self.remote_controller.get_property('LeftJoystickX') <= -0.7:
                 print("Right")
-                while self.remote_controller.get_property('LeftJoystickX') <= -0.7:
+                while self.remote_controller.get_property('LeftJoystickX') >= 0.7:
                     self.motor_controller.drive_right()
+            elif self.remote_controller.get_property('LeftJoystickX') <= -0.7:
+                print("Left")
+                while self.remote_controller.get_property('LeftJoystickX') <= -0.7:
+                    self.motor_controller.drive_left()
             elif self.remote_controller.get_property('LeftTrigger') >= 0.7:
                 print("spin_right")
                 while self.remote_controller.get_property('LeftTrigger') >= 0.7:

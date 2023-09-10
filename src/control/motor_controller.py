@@ -56,18 +56,18 @@ class MotorController:
 
     def drive_left(self):
         try:
-            GPIO.output(self.pin1, True)
+            GPIO.output(self.pin1, False)
             GPIO.output(self.pin2, False)
-            GPIO.output(self.pin3, False)
+            GPIO.output(self.pin3, True)
             GPIO.output(self.pin4, False)
         except:
             print("drive_left failed")
 
     def drive_right(self):
         try:
-            GPIO.output(self.pin1, False)
+            GPIO.output(self.pin1, True)
             GPIO.output(self.pin2, False)
-            GPIO.output(self.pin3, True)
+            GPIO.output(self.pin3, False)
             GPIO.output(self.pin4, False)
         except:
             print("drive_right failed")
