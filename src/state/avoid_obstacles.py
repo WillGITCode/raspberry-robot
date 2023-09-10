@@ -8,10 +8,10 @@ class AvoidObstaclesState:
 
     def run(self):
         print("Avoiding obstacles")
-        # if self.ping_sensor.get_distance() > 7:
-        #     self.motor_controller.drive_forwards()
-        # else:
-        #     self.motor_controller.drive_backwards()
-        #     sleep(1)
-        #     self.motor_controller.spin_left()
-        #     sleep(.5)
+        if self.ping_sensor.get_distance() > 7:
+            self.motor_controller.drive_forwards()
+        else:
+            self.motor_controller.drive_backwards()
+            sleep(1)
+            self.motor_controller.spin_left()
+            sleep(.5)

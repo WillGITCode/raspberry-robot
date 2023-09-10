@@ -9,30 +9,36 @@ class RemoteControlNavigation:
     def run(self):
         print("Remote control navigation")
         try:
-            if self.remote_controller.get_property('LeftJoystickY') >= 0.7:
+            if self.remote_controller.get_property('LeftJoystickY') >= 0.3:
                 print("Backward")
-                while self.remote_controller.get_property('LeftJoystickY') >= 0.7:
-                    self.motor_controller.drive_backwards()
-            elif self.remote_controller.get_property('LeftJoystickY') <= -0.7:
+                while self.remote_controller.get_property('LeftJoystickY') >= 0.3:
+                    self.motor_controller.drive_backwards(
+                        self.remote_controller.get_property('LeftJoystickY'))
+            elif self.remote_controller.get_property('LeftJoystickY') <= -0.3:
                 print("Forward")
-                while self.remote_controller.get_property('LeftJoystickY') <= -0.7:
-                    self.motor_controller.drive_forwards()
-            elif self.remote_controller.get_property('LeftJoystickX') >= 0.7:
+                while self.remote_controller.get_property('LeftJoystickY') <= -0.3:
+                    self.motor_controller.drive_forwards(
+                        self.remote_controller.get_property('LeftJoystickY'))
+            elif self.remote_controller.get_property('LeftJoystickX') >= 0.3:
                 print("Right")
-                while self.remote_controller.get_property('LeftJoystickX') >= 0.7:
-                    self.motor_controller.drive_right()
-            elif self.remote_controller.get_property('LeftJoystickX') <= -0.7:
+                while self.remote_controller.get_property('LeftJoystickX') >= 0.3:
+                    self.motor_controller.drive_right(
+                        self.remote_controller.get_property('LeftJoystickX'))
+            elif self.remote_controller.get_property('LeftJoystickX') <= -0.3:
                 print("Left")
-                while self.remote_controller.get_property('LeftJoystickX') <= -0.7:
-                    self.motor_controller.drive_left()
-            elif self.remote_controller.get_property('LeftTrigger') >= 0.7:
+                while self.remote_controller.get_property('LeftJoystickX') <= -0.3:
+                    self.motor_controller.drive_left(
+                        self.remote_controller.get_property('LeftJoystickX'))
+            elif self.remote_controller.get_property('LeftTrigger') >= 0.3:
                 print("spin_left")
-                while self.remote_controller.get_property('LeftTrigger') >= 0.7:
-                    self.motor_controller.spin_left()
-            elif self.remote_controller.get_property('RightTrigger') >= 0.7:
+                while self.remote_controller.get_property('LeftTrigger') >= 0.3:
+                    self.motor_controller.spin_left(
+                        elf.remote_controller.get_property('LeftTrigger'))
+            elif self.remote_controller.get_property('RightTrigger') >= 0.3:
                 print("spin_right")
-                while self.remote_controller.get_property('RightTrigger') >= 0.7:
-                    self.motor_controller.spin_right()
+                while self.remote_controller.get_property('RightTrigger') >= 0.3:
+                    self.motor_controller.spin_right(
+                        self.remote_controller.get_property('RightTrigger'))
             else:
                 self.motor_controller.drive_stop()
         finally:
