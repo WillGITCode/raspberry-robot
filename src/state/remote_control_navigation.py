@@ -1,10 +1,13 @@
 from time import sleep
 
+from control.xbox_controller import XboxControllerSingleton
+
 
 class RemoteControlNavigation:
-    def __init__(self, motor_controller, remote_controller):
-        self.remote_controller = remote_controller
+    def __init__(self, motor_controller):
         self.motor_controller = motor_controller
+        # Get instance of the XboxController class
+        self.controller = XboxControllerSingleton()
 
     def run(self):
         print("Remote control navigation")

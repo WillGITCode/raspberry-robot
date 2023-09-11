@@ -1,26 +1,28 @@
+from control.xbox_controller import XboxControllerSingleton
 from state.robot_state_machine import RobotStateMachine
 import RPi.GPIO as GPIO
 
 
 def main():
     try:
+        # get xbox controller instance
+        controller = XboxControllerSingleton()
         # Create an instance of the StateMachine class
         state_machine = RobotStateMachine()
-
         # Set the initial state of the state machine
         state_machine.set_state("avoid_obstacles")
 
         while True:
-            if state_machine.get_controller().get_property('Back'):
+            if controller.get_property('Back'):
                 raise SystemExit(101)
 
-            if state_machine.get_controller().get_property('Start'):
+            if controller.get_property('Start'):
                 state_machine.set_next_state("idle")
 
-            if state_machine.get_controller().get_property('A') == 1:
+            if controller.get_property('A') == 1:
                 state_machine.set_next_state("avoid_obstacles")
 
-            if state_machine.get_controller().get_property('Y') == 1:
+            if controller.get_property('Y') == 1:
                 state_machine.set_next_state("remote_control_navigation")
 
             state_machine.run()

@@ -8,8 +8,6 @@ from state.remote_control_navigation import RemoteControlNavigation
 
 class RobotStateMachine:
     def __init__(self):
-        # Create an instance of the XboxController class
-        self.controller = XboxController()
         # init ping sensor
         self.forward_ping_sensor = PingSensor(16)
         # Init motor controller
@@ -17,7 +15,7 @@ class RobotStateMachine:
         self.states = {
             "idle": IdleState(self.motor_controller),
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor),
-            "remote_control_navigation": RemoteControlNavigation(self.motor_controller, self.controller),
+            "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
         }
         self.current_state = "avoid_obstacles"
         self.next_state = ""
@@ -45,6 +43,3 @@ class RobotStateMachine:
         if self.next_state != "":
             self.set_state(self.next_state)
         self.current_state.run()
-
-    def get_controller(self):
-        return self.controller
