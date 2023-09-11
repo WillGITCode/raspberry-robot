@@ -33,7 +33,7 @@ class RemoteControlNavigation:
                 print("spin_left")
                 while self.remote_controller.get_property('LeftTrigger') >= 0.3:
                     self.motor_controller.spin_left(
-                        elf.remote_controller.get_property('LeftTrigger'))
+                        self.remote_controller.get_property('LeftTrigger'))
             elif self.remote_controller.get_property('RightTrigger') >= 0.3:
                 print("spin_right")
                 while self.remote_controller.get_property('RightTrigger') >= 0.3:
