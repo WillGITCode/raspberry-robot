@@ -32,6 +32,7 @@ class PingSensor:
             duration = endtime-starttime
             # Distance is defined as time/2 (there and back) * speed of sound 34000 cm/s
             distance = duration*34000/2
+            print(distance)
             return distance
         except:
             return float('inf')
