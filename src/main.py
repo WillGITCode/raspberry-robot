@@ -10,7 +10,7 @@ def main():
         # Create an instance of the StateMachine class
         state_machine = RobotStateMachine()
         # Set the initial state of the state machine
-        state_machine.set_state("avoid_obstacles")
+        state_machine.set_state("idle")
 
         while True:
             if controller.get_property('Back'):
@@ -26,6 +26,7 @@ def main():
                 state_machine.set_next_state("remote_control_navigation")
 
             state_machine.run()
+        
     finally:
         print("Exiting main")
         GPIO.cleanup()

@@ -1,5 +1,4 @@
 from control.motor_controller import MotorController
-from control.xbox_controller import XboxController
 from sensors.ping_sensor import PingSensor
 from state.avoid_obstacles import AvoidObstaclesState
 from state.idle_state import IdleState
@@ -24,6 +23,7 @@ class RobotStateMachine:
         self.states[name] = state
 
     def set_state(self, name):
+        print(name)
         self.current_state = self.states[name]
 
     def set_next_state(self, name):

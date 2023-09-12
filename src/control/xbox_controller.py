@@ -62,22 +62,22 @@ class XboxControllerSingleton(object):
                 for event in events:
                     if event.code == 'ABS_Y':
                         self.LeftJoystickY = event.state / \
-                            XboxController.MAX_JOY_VAL  # normalize between -1 and 1
+                            XboxControllerSingleton.MAX_JOY_VAL  # normalize between -1 and 1
                     elif event.code == 'ABS_X':
                         self.LeftJoystickX = event.state / \
-                            XboxController.MAX_JOY_VAL  # normalize between -1 and 1
+                            XboxControllerSingleton.MAX_JOY_VAL  # normalize between -1 and 1
                     elif event.code == 'ABS_RY':
                         self.RightJoystickY = event.state / \
-                            XboxController.MAX_JOY_VAL  # normalize between -1 and 1
+                            XboxControllerSingleton.MAX_JOY_VAL  # normalize between -1 and 1
                     elif event.code == 'ABS_RX':
                         self.RightJoystickX = event.state / \
-                            XboxController.MAX_JOY_VAL  # normalize between -1 and 1
+                            XboxControllerSingleton.MAX_JOY_VAL  # normalize between -1 and 1
                     elif event.code == 'ABS_Z':
                         self.LeftTrigger = event.state / \
-                            XboxController.MAX_TRIG_VAL  # normalize between 0 and 1
+                            XboxControllerSingleton.MAX_TRIG_VAL  # normalize between 0 and 1
                     elif event.code == 'ABS_RZ':
                         self.RightTrigger = event.state / \
-                            XboxController.MAX_TRIG_VAL  # normalize between 0 and 1
+                            XboxControllerSingleton.MAX_TRIG_VAL  # normalize between 0 and 1
                     elif event.code == 'BTN_TL':
                         self.LeftBumper = event.state
                     elif event.code == 'BTN_TR':

@@ -7,10 +7,9 @@ class RemoteControlNavigation:
     def __init__(self, motor_controller):
         self.motor_controller = motor_controller
         # Get instance of the XboxController class
-        self.controller = XboxControllerSingleton()
+        self.remote_controller = XboxControllerSingleton()
 
     def run(self):
-        print("Remote control navigation")
         try:
             if self.remote_controller.get_property('LeftJoystickY') >= 0.1:
                 print("Backward")

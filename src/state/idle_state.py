@@ -5,5 +5,4 @@ class IdleState:
         self.motor_controller = motor_controller
 
     def run(self):
-        print("Idle")
-        # self.motor_controller.drive_stop()
+        self.motor_controller.drive_stop()
