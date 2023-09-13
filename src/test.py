@@ -28,19 +28,33 @@ GPIO.setup(35, GPIO.OUT)
 servo = GPIO.PWM(35, 50)
 
 servo.start(0)
-print("Starting servo")
-time.sleep(2)
+# print("Starting servo")
+# time.sleep(2)
 
-print("Moving servo")
-duty = 2
-while duty <= 12:
-    servo.ChangeDutyCycle(duty)
-    time.sleep(0.5)
-    duty += 1
+# print("Moving servo")
+# duty = 2
+# while duty <= 12:
+#     servo.ChangeDutyCycle(duty)
+#     time.sleep(0.2)
+#     servo.ChangeDutyCycle(0)
+#     time.sleep(0.2)
+#     duty += 1
 
-time.sleep(2)
+# time.sleep(2)
 
-print("moving servo back")
+# print("moving servo back")
 
-servo.ChangeDutyCycle(7)
-time.sleep(2)
+# servo.ChangeDutyCycle(7)
+# time.sleep(2)
+
+try:
+    while True:
+        angle = float(input("enter angle: "))
+        print(angle)
+        servo.ChangeDutyCycle(2+(angle/18))
+        time.sleep(0.5)
+        servo.ChangeDutyCycle(0)
+
+finally:
+    servo.stop()
+    GPIO.cleanup()

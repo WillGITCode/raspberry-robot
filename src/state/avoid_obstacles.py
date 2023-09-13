@@ -6,9 +6,10 @@ directions = ["left", "right", "turn_around"]
 
 
 class AvoidObstaclesState:
-    def __init__(self, motor_controller, ping_sensor):
+    def __init__(self, motor_controller, ping_sensor, ping_servo):
         self.ping_sensor = ping_sensor
         self.motor_controller = motor_controller
+        self.ping_servo = ping_servo
 
     def run(self):
         if self.ping_sensor.get_distance() > MINIMUM_DISTANCE:
@@ -21,12 +22,15 @@ class AvoidObstaclesState:
     def get_optimal_direction(self):
         left_distance
         right_distance
-        self.ping_servo.look_left()
-        # delay ?
+        # look left
+        self.ping_servo.set_angle(0)
         left_distance = self.ping_sensor.get_distance()
-        self.ping_servo.look_right()
+        # look right
+        self.ping_servo.set_angle(180)
         # delay ?
         right_distance = self.ping_sensor.get_distance()
+        # look forward
+        self.ping_servo.set_angle(90)
         # turn left if no optimal direction
         if left_distance > MINIMUM_DISTANCE and right_distance > MINIMUM_DISTANCE:
             return directions[0]
