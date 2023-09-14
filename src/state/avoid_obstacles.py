@@ -25,9 +25,13 @@ class AvoidObstaclesState:
     def run(self):
         # Reset the servo to the middle
         self.ping_servo.set_angle(95)
+        forward_distance = self.ping_sensor.get_distance()
         # Drive forwards until the distance is less than the minimum forward distance
-        while self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
+        if forward_distance > MINIMUM_FORWARD_DISTANCE:
             self.motor_controller.drive_forwards(0.7)
+        while forward_distance > MINIMUM_FORWARD_DISTANCE:
+            forward_distance = self.ping_sensor.get_distance()
+            sleep(0.1)
         # Stop driving
         self.motor_controller.drive_stop()
         new_direction = self.get_optimal_direction()
@@ -51,13 +55,13 @@ class AvoidObstaclesState:
 
     def get_optimal_direction(self):
         # look left
-        self.ping_servo.set_angle(0)
+        self.ping_servo.set_angle(10)
         left_distance = self.ping_sensor.get_distance()
         # look right
-        self.ping_servo.set_angle(180)
+        self.ping_servo.set_angle(170)
         right_distance = self.ping_sensor.get_distance()
         # look forward
-        self.ping_servo.set_angle(90)
+        self.ping_servo.set_angle(95)
         # turn left if no optimal direction
         if left_distance > MINIMUM_SIDE_DISTANCE and right_distance > MINIMUM_SIDE_DISTANCE:
             return directions[0]
