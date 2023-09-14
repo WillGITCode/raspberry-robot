@@ -19,32 +19,34 @@ class AvoidObstaclesState:
         self.thread.start()
 
     def exit(self):
-        self.thread.join()
+        if self.thread is not None:
+            self.thread.join()
 
     def run(self):
-        # if self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
-        #     self.motor_controller.drive_forwards(0.7)
-        #     print("still good")
-        # else:
-        #     print("turrrrrr")
-        #     self.motor_controller.drive_stop()
-        #     self.motor_controller.spin_left(1)
-        #     sleep(0.5)
+        # Reset the servo to the middle
+        self.ping_servo.set_angle(95)
         # Drive forwards until the distance is less than the minimum forward distance
         while self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
             self.motor_controller.drive_forwards(0.7)
         # Stop driving
         self.motor_controller.drive_stop()
-        print(self.get_optimal_direction())
+        new_direction = self.get_optimal_direction()
         # Turn in the optimal direction
-        if self.get_optimal_direction() == directions[0]:
+        if new_direction == directions[0]:
             self.motor_controller.spin_left(1)
+            print("left")
             sleep(0.5)
-        elif self.get_optimal_direction() == directions[1]:
+        elif new_direction == directions[1]:
             self.motor_controller.spin_right(1)
+            print("right")
             sleep(0.5)
-        elif self.get_optimal_direction() == directions[2]:
+        elif new_direction == directions[2]:
             self.motor_controller.spin_left(1)
+            print("turn around")
+            sleep(1)
+        else:
+            self.motor_controller.spin_right(1)
+            print("no direction")
             sleep(1)
 
     def get_optimal_direction(self):

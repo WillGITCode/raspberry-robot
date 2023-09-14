@@ -1,3 +1,4 @@
+import threading
 from time import sleep
 
 from control.xbox_controller import XboxControllerSingleton
@@ -8,6 +9,15 @@ class RemoteControlNavigation:
         self.motor_controller = motor_controller
         # Get instance of the XboxController class
         self.remote_controller = XboxControllerSingleton()
+        self.thread = None
+
+    def enter(self):
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
+
+    def exit(self):
+        if self.thread is not None:
+            self.thread.join()
 
     def run(self):
         try:

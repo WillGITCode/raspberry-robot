@@ -12,16 +12,9 @@ def main():
         state_machine = RobotStateMachine()
         # Set the initial state of the state machine
         state_machine.set_state("idle")
-        # Start the state machine thread
-        state_machine_thread = threading.Thread(
-            target=state_machine.run)
-        state_machine_thread.start()
 
         while True:
             if controller.get_property('Back'):
-                # Stop the state machine thread
-                state_machine.stop()
-                state_machine_thread.join()
                 raise SystemExit(101)
 
             if controller.get_property('Start'):

@@ -13,7 +13,8 @@ class IdleState:
         self.thread.start()
 
     def exit(self):
-        self.thread.join()
+        if self.thread is not None:
+            self.thread.join()
 
     def run(self):
         self.motor_controller.drive_stop()

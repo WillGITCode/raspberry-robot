@@ -19,7 +19,7 @@ class RobotStateMachine:
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor, self.servo),
             "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
         }
-        self.current_state = "avoid_obstacles"
+        self.current_state = self.states["idle"]
         self.next_state = ""
 
     def add_state(self, name, state):
