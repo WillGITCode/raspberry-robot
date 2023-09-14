@@ -12,22 +12,26 @@ class AvoidObstaclesState:
         self.ping_servo = ping_servo
 
     def run(self):
-        if self.ping_sensor.get_distance() > MINIMUM_DISTANCE:
+        # if self.ping_sensor.get_distance() > MINIMUM_DISTANCE:
+        #     self.motor_controller.drive_forwards(0.7)
+        #     print("still good")
+        # else:
+        #     print("turrrrrr")
+        #     self.motor_controller.drive_stop()
+        #     self.motor_controller.spin_left(1)
+        #     sleep(0.5)
+        while self.ping_sensor.get_distance() > MINIMUM_DISTANCE:
             self.motor_controller.drive_forwards(0.7)
-        else:
-            self.motor_controller.drive_stop()
-            self.motor_controller.spin_left(1)
             sleep(0.5)
+        self.motor_controller.drive_stop()
+        print(self.get_optimal_direction())
 
     def get_optimal_direction(self):
-        left_distance
-        right_distance
         # look left
         self.ping_servo.set_angle(0)
         left_distance = self.ping_sensor.get_distance()
         # look right
         self.ping_servo.set_angle(180)
-        # delay ?
         right_distance = self.ping_sensor.get_distance()
         # look forward
         self.ping_servo.set_angle(90)
