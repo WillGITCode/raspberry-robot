@@ -1,3 +1,4 @@
+import asyncio
 from control.motor_controller import MotorController
 from control.servo_controller import ServoController
 from sensors.ping_sensor import PingSensor
@@ -20,24 +21,28 @@ class RobotStateMachine:
             "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
         }
         self.current_state = self.states["idle"]
-        self.next_state = ""
+        self.transition_task = None
 
-    def add_state(self, name, state):
-        self.states[name] = state
-
-    def set_state(self, name):
-        print(name)
+    async def transition_to_state(self, name):
+        if self.current_state is not None:
+            self.current_state.exit()
         self.current_state = self.states[name]
+        self.current_state.enter()
+        await asyncio.sleep(0)  # Yield control to the event loop
 
-    def set_next_state(self, name):
-        # if the name argument is in the states dictionary and the current state is not the same as the name argument
-        # then set the current state to the name argument
+    async def set_next_state(self, name):
         if name in self.states and self.current_state != self.states[name]:
-            self.set_state(name)
-            # reset next state to empty string
-            self.next_state = ""
+            if self.transition_task:
+                self.transition_task.cancel()
+            self.transition_task = asyncio.create_task(
+                self.transition_to_state(name))
+            await self.transition_task  # Await the transition task
+
+    def cancel_transition(self):
+        if self.transition_task and not self.transition_task.done():
+            self.transition_task.cancel()
 
     def run(self):
-        if self.next_state != "":
-            self.set_state(self.next_state)
+        if self.transition_task and self.transition_task.done():
+            self.transition_task = None
         self.current_state.run()
