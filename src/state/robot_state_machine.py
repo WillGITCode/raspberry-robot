@@ -20,29 +20,25 @@ class RobotStateMachine:
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor, self.servo),
             "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
         }
-        self.current_state = self.states["idle"]
-        self.transition_task = None
-
-    async def transition_to_state(self, name):
-        if self.current_state is not None:
-            self.current_state.exit()
-        self.current_state = self.states[name]
-        self.current_state.enter()
-        await asyncio.sleep(0)  # Yield control to the event loop
+        self.current_state = None
+        self.current_state_task = None
 
     async def set_next_state(self, name):
         if name in self.states and self.current_state != self.states[name]:
-            if self.transition_task:
-                self.transition_task.cancel()
-            self.transition_task = asyncio.create_task(
-                self.transition_to_state(name))
-            await self.transition_task  # Await the transition task
+            if self.current_state_task:
+                self.current_state_task.cancel()
+            self.current_state = self.states[name]
+            self.current_state_task = asyncio.create_task(
+                self.current_state.run())
 
-    def cancel_transition(self):
-        if self.transition_task and not self.transition_task.done():
-            self.transition_task.cancel()
+    async def cancel_transition(self):
+        if self.current_state_task and not self.current_state_task.done():
+            self.current_state_task.cancel()
 
-    def run(self):
-        if self.transition_task and self.transition_task.done():
-            self.transition_task = None
-        self.current_state.run()
+    async def run(self):
+        if not self.current_state_task:
+            return
+        try:
+            await self.current_state_task
+        except asyncio.CancelledError:
+            pass
