@@ -27,10 +27,7 @@ class RobotStateMachine:
 
     def set_state(self, name):
         print(name)
-        if self.current_state is not None:
-            self.current_state.exit()
         self.current_state = self.states[name]
-        self.current_state.enter()
 
     def set_next_state(self, name):
         # if the name argument is in the states dictionary and the current state is not the same as the name argument

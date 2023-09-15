@@ -1,6 +1,5 @@
 
 
-import asyncio
 from time import sleep
 MINIMUM_FORWARD_DISTANCE = 8
 MINIMUM_SIDE_DISTANCE = 16
@@ -12,14 +11,6 @@ class AvoidObstaclesState:
         self.ping_sensor = ping_sensor
         self.motor_controller = motor_controller
         self.ping_servo = ping_servo
-        self.task = None
-
-    def enter(self):
-        self.task = asyncio.ensure_future(self.run())
-
-    def exit(self):
-        if self.thread is not None:
-            self.task.cancel()
 
     def run(self):
         # Reset the servo to the middle
