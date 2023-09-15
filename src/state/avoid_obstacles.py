@@ -1,6 +1,6 @@
 
 
-import threading
+import asyncio
 from time import sleep
 MINIMUM_FORWARD_DISTANCE = 8
 MINIMUM_SIDE_DISTANCE = 16
@@ -12,26 +12,23 @@ class AvoidObstaclesState:
         self.ping_sensor = ping_sensor
         self.motor_controller = motor_controller
         self.ping_servo = ping_servo
-        self.thread = None
+        self.task = None
 
     def enter(self):
-        self.thread = threading.Thread(target=self.run)
-        self.thread.start()
+        self.task = asyncio.ensure_future(self.run())
 
     def exit(self):
         if self.thread is not None:
-            self.thread.join()
+            self.task.cancel()
 
     def run(self):
         # Reset the servo to the middle
         self.ping_servo.set_angle(95)
-        forward_distance = self.ping_sensor.get_distance()
         # Drive forwards until the distance is less than the minimum forward distance
-        if forward_distance > MINIMUM_FORWARD_DISTANCE:
+        while self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
             self.motor_controller.drive_forwards(0.7)
-        while forward_distance > MINIMUM_FORWARD_DISTANCE:
-            forward_distance = self.ping_sensor.get_distance()
             sleep(0.1)
+
         # Stop driving
         self.motor_controller.drive_stop()
         new_direction = self.get_optimal_direction()

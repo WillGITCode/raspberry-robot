@@ -13,7 +13,7 @@ class RobotStateMachine:
         # Init motor controller
         self.motor_controller = MotorController([18, 11, 13, 15], [32, 33])
         # Init servo
-        self.servo = ServoController(35)
+        self.servo = ServoController(5)
         self.states = {
             "idle": IdleState(self.motor_controller),
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor, self.servo),
