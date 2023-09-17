@@ -1,4 +1,3 @@
-import asyncio
 from control.motor_controller import MotorController
 from control.servo_controller import ServoController
 from sensors.ping_sensor import PingSensor
@@ -20,25 +19,11 @@ class RobotStateMachine:
             "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor, self.servo),
             "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
         }
-        self.current_state = None
-        self.current_state_task = None
+        self.state = self.states["idle"]
 
-    async def set_next_state(self, name):
-        if name in self.states and self.current_state != self.states[name]:
-            if self.current_state_task:
-                self.current_state_task.cancel()
-            self.current_state = self.states[name]
-            self.current_state_task = asyncio.create_task(
-                self.current_state.run())
+    def set_state(self, name):
+        if name in self.states and self.state != self.states[name]:
+            self.state = self.states[name]
 
-    async def cancel_transition(self):
-        if self.current_state_task and not self.current_state_task.done():
-            self.current_state_task.cancel()
-
-    async def run(self):
-        if not self.current_state_task:
-            return
-        try:
-            await self.current_state_task
-        except asyncio.CancelledError:
-            pass
+    def run(self):
+        self.state.run()
