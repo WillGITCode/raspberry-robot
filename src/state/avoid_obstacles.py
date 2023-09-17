@@ -1,6 +1,6 @@
 
 
-from time import sleep
+from time import sleep, time
 MINIMUM_FORWARD_DISTANCE = 8
 MINIMUM_SIDE_DISTANCE = 16
 directions = ["left", "right", "turn_around"]
@@ -11,35 +11,43 @@ class AvoidObstaclesState:
         self.ping_sensor = ping_sensor
         self.motor_controller = motor_controller
         self.ping_servo = ping_servo
+        self.last_call_time = time()
 
     def run(self):
         # Reset the servo to the middle
         self.ping_servo.set_angle(95)
         # Drive forwards until the distance is less than the minimum forward distance
         while self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
-            self.motor_controller.drive_forwards(0.7)
-            yield
+            current_time = time()
+            if current_time - self.last_call_time > 0.1:
+                self.last_call_time = current_time
+                self.motor_controller.drive_forwards(0.7)
 
         # Stop driving
         self.motor_controller.drive_stop()
         new_direction = self.get_optimal_direction()
         # Turn in the optimal direction
         if new_direction == directions[0]:
-            self.motor_controller.spin_left(1)
-            print("left")
-            sleep(0.5)
+            current_time = time()
+            if current_time - self.last_call_time > 0.5:
+                self.last_call_time = current_time
+                self.motor_controller.spin_left(1)
+                print("left")
         elif new_direction == directions[1]:
-            self.motor_controller.spin_right(1)
-            print("right")
-            sleep(0.5)
+            current_time = time()
+            if current_time - self.last_call_time > 0.5:
+                self.motor_controller.spin_right(1)
+                print("right")
         elif new_direction == directions[2]:
-            self.motor_controller.spin_left(1)
-            print("turn around")
-            sleep(1)
+            current_time = time()
+            if current_time - self.last_call_time > 1:
+                self.motor_controller.spin_left(1)
+                print("turn around")
         else:
-            self.motor_controller.spin_right(1)
-            print("no direction")
-            sleep(1)
+            current_time = time()
+            if current_time - self.last_call_time > 0.5:
+                self.motor_controller.spin_right(1)
+                print("no direction")
 
     def get_optimal_direction(self):
         # look left

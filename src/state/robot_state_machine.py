@@ -23,6 +23,7 @@ class RobotStateMachine:
 
     def set_state(self, name):
         if name in self.states and self.state != self.states[name]:
+            print("Changing state to: " + name)
             self.state = self.states[name]
 
     def run(self):
