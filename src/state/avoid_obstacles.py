@@ -18,7 +18,7 @@ class AvoidObstaclesState:
         # Drive forwards until the distance is less than the minimum forward distance
         while self.ping_sensor.get_distance() > MINIMUM_FORWARD_DISTANCE:
             self.motor_controller.drive_forwards(0.7)
-            sleep(0.1)
+            yield
 
         # Stop driving
         self.motor_controller.drive_stop()

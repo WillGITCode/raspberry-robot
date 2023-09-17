@@ -19,15 +19,15 @@
 #     print(p.get_distance())
 #     time.sleep(0.5)
 
-import RPi.GPIO as GPIO
-import time
+# import RPi.GPIO as GPIO
+# import time
 
-GPIO.setmode(GPIO.BOARD)
+# GPIO.setmode(GPIO.BOARD)
 
-GPIO.setup(35, GPIO.OUT)
-servo = GPIO.PWM(35, 50)
+# GPIO.setup(35, GPIO.OUT)
+# servo = GPIO.PWM(35, 50)
 
-servo.start(0)
+# servo.start(0)
 # print("Starting servo")
 # time.sleep(2)
 
@@ -47,14 +47,28 @@ servo.start(0)
 # servo.ChangeDutyCycle(7)
 # time.sleep(2)
 
-try:
-    while True:
-        angle = float(input("enter angle: "))
-        print(angle)
-        servo.ChangeDutyCycle(2+(angle/18))
-        time.sleep(0.5)
-        servo.ChangeDutyCycle(0)
+# try:
+#     while True:
+#         angle = float(input("enter angle: "))
+#         print(angle)
+#         servo.ChangeDutyCycle(2+(angle/18))
+#         time.sleep(0.5)
+#         servo.ChangeDutyCycle(0)
 
-finally:
-    servo.stop()
-    GPIO.cleanup()
+# finally:
+#     servo.stop()
+#     GPIO.cleanup()
+
+import sys
+
+
+x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9, 99, 9, 9, 9, 9, 9, 9, 9,
+     9, 9, 9, 9, 9, 9, 9, 9, 99, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+
+y = map(lambda i: i**2, x)
+
+# for i in y:
+#     print(i)
+
+print(sys.getsizeof(list(y)))
+print(sys.getsizeof(y))
