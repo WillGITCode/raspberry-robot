@@ -18,7 +18,7 @@ def main():
                 state_machine.set_state("idle")
 
             if controller.get_property('A') == 1:
-                state_machine.set_state("avoid_obstacles")
+                state_machine.set_state("obstacle_avoidance")
 
             if controller.get_property('Y') == 1:
                 state_machine.set_state(

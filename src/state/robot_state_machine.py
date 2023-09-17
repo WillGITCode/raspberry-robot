@@ -1,9 +1,9 @@
 from control.motor_controller import MotorController
 from control.servo_controller import ServoController
 from sensors.ping_sensor import PingSensor
-from state.avoid_obstacles import AvoidObstaclesState
+from state.obstacle_avoidance_state import ObstacleAvoidanceState
 from state.idle_state import IdleState
-from state.remote_control_navigation import RemoteControlNavigation
+from state.remote_control_state import RemoteControlState
 
 
 class RobotStateMachine:
@@ -16,8 +16,8 @@ class RobotStateMachine:
         self.servo = ServoController(5)
         self.states = {
             "idle": IdleState(self.motor_controller),
-            "avoid_obstacles": AvoidObstaclesState(self.motor_controller, self.forward_ping_sensor, self.servo),
-            "remote_control_navigation": RemoteControlNavigation(self.motor_controller),
+            "obstacle_avoidance": ObstacleAvoidanceState(self.motor_controller, self.forward_ping_sensor, self.servo),
+            "remote_control_navigation": RemoteControlState(self.motor_controller),
         }
         self.state = self.states["idle"]
 
