@@ -37,8 +37,8 @@ def main():
     setup_logging()
     logging.info("===========================================")
     logging.info("Robot service starting up.")
-    controller = XboxControllerSingleton()
     state_machine = RobotStateMachine()
+    controller = XboxControllerSingleton()
     running = True
 
     try:
