@@ -1,6 +1,7 @@
 from threading import Thread
 from math import pow
 from inputs import get_gamepad
+from inputs import UnpluggedError
 
 
 class XboxControllerSingleton(object):
@@ -57,7 +58,10 @@ class XboxControllerSingleton(object):
 
     def _monitor_controller(self):
         while True:
-            events = get_gamepad()
+            try:
+                events = get_gamepad()
+            except UnpluggedError:
+                continue
             if events is not None:
                 for event in events:
                     if event.code == 'ABS_Y':
