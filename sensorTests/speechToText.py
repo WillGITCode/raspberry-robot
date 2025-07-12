@@ -125,7 +125,6 @@ def handle_controller_input(controller):
 
 model_path = Path(__file__).resolve().parent / "model"
 model = Model(str(model_path))
-model = Model("sensorTests/model")
 rec = KaldiRecognizer(model, 16000)
 controller = XboxControllerSingleton()
 running = True
