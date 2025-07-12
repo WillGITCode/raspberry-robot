@@ -1,3 +1,4 @@
+from pathlib import Path
 from vosk import Model, KaldiRecognizer
 import pyaudio
 import json
@@ -122,6 +123,8 @@ def handle_controller_input(controller):
 
     return True
 
+model_path = Path(__file__).resolve().parent / "model"
+model = Model(str(model_path))
 model = Model("sensorTests/model")
 rec = KaldiRecognizer(model, 16000)
 controller = XboxControllerSingleton()
