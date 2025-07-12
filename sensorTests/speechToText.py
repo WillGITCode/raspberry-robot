@@ -13,6 +13,7 @@ def handle_controller_input(controller):
 
 model = Model("sensorTests/model")
 rec = KaldiRecognizer(model, 16000)
+controller = XboxControllerSingleton()
 running = True
 
 p = pyaudio.PyAudio()
