@@ -1,7 +1,7 @@
 from vosk import Model, KaldiRecognizer
 import pyaudio
 import json
-from src.control.xbox_controller import XboxControllerSingleton
+from ..src.control.xbox_controller import XboxControllerSingleton
 
 
 def handle_controller_input(controller):
