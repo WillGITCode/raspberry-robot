@@ -129,3 +129,44 @@ One line per TBD row in the specs. Tick a line, then put the value in the spec a
 - [ ] `bank_capacity` (mAh): Capacity is unknown; read it off the label. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `bank_cable_length` (mm): USB-C cable to the Pi. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `bank_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## gy-521
+
+- [ ] `gy521_board_length` (mm): Board length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `gy521_board_width` (mm): Board width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `gy521_board_height` (mm): Board plus pin header, underside to top. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `gy521_hole_diameter` (mm): Mounting hole. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `gy521_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## c920
+
+- [ ] `c920_body_width` (mm): Camera body width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `c920_body_height` (mm): Camera body height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `c920_body_depth` (mm): Camera body depth. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `c920_clip_thickness` (mm): Clip jaw gap and thickness at the grip. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `c920_clip_width` (mm): Clip width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `c920_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## phone-s7
+
+- [ ] `s7_height` (mm): Phone height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `s7_width` (mm): Phone width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `s7_thickness` (mm): Phone thickness, camera bump excluded. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `s7_camera_bump` (mm): Rear camera bump height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `s7_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## speaker
+
+- [ ] `speaker_length` (mm): Speaker length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `speaker_width` (mm): Speaker width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `speaker_height` (mm): Speaker height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `speaker_mount_hole_spacing` (mm): Centre to centre of mounting holes, if any. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `speaker_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## lidar-ld06
+
+- [ ] `lidar_body_diameter` (mm): Body footprint. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `lidar_body_height` (mm): Base to top of the scanning head. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `lidar_hole_spacing` (mm): Centre to centre of the base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `lidar_hole_diameter` (mm): Base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `lidar_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
