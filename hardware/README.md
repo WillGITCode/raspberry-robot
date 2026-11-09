@@ -32,3 +32,8 @@ CAD models must be fully parametric and editable by a human: every sketch, body 
 | [kill-switch](kill-switch/spec.md) | as built | 8 |
 | [nimh-battery](nimh-battery/spec.md) | as built | 5 |
 | [power-bank](power-bank/spec.md) | as built | 6 |
+| [gy-521](gy-521/spec.md) | planned | 5 |
+| [c920](c920/spec.md) | planned | 6 |
+| [phone-s7](phone-s7/spec.md) | planned | 5 |
+| [speaker](speaker/spec.md) | planned | 5 |
+| [lidar-ld06](lidar-ld06/spec.md) | planned | 5 |
