@@ -1,0 +1,4 @@
+#!/bin/sh
+# Drive every motor pin low (coast). Safe to run any time, also while the service runs.
+cd "$(dirname "$(readlink -f "$0")")/.." || exit 1
+exec "${ROVER_PYTHON:-.venv/bin/python}" -m rover.stop
