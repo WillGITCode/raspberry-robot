@@ -1,0 +1,14 @@
+[project]
+name = "rover"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["gpiozero"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["rover"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
