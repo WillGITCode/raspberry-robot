@@ -25,3 +25,10 @@ CAD models must be fully parametric and editable by a human: every sketch, body 
 | [tt-motor](tt-motor/spec.md) | as built | 10 |
 | [wheel](wheel/spec.md) | as built | 5 |
 | [wheel-encoder](wheel-encoder/spec.md) | as built | 7 |
+| [l298n](l298n/spec.md) | as built | 9 |
+| [pi4-case](pi4-case/spec.md) | as built | 6 |
+| [ping-sensor](ping-sensor/spec.md) | as built | 7 |
+| [pan-servo](pan-servo/spec.md) | as built | 6 |
+| [kill-switch](kill-switch/spec.md) | as built | 8 |
+| [nimh-battery](nimh-battery/spec.md) | as built | 5 |
+| [power-bank](power-bank/spec.md) | as built | 6 |

@@ -60,3 +60,72 @@ One line per TBD row in the specs. Tick a line, then put the value in the spec a
 - [ ] `encoder_sensor_height` (mm): Optical sensor body. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `encoder_sensor_gap` (mm): Slot gap of the optical sensor. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `encoder_lead_length` (mm): Lead length to the Dupont plug. Measure with a tape or ruler (the calliper display is faulty).
+
+
+## l298n
+
+- [ ] `l298n_board_length` (mm): Board length. Generic clone, so no datasheet value is used. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_board_width` (mm): Board width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_board_height` (mm): Board plus heatsink, top to underside of the PCB. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_hole_spacing_length` (mm): Centre to centre of the mounting holes along the length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_hole_spacing_width` (mm): Centre to centre of the mounting holes across the width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_hole_diameter` (mm): Mounting holes. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_standoff_height` (mm): Brass standoff height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_position_from_rear` (mm): Board edge to the rear edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `l298n_position_from_left` (mm): Board edge to the left edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## pi4-case
+
+- [ ] `pi4_hole_diameter` (mm): Not stated in the datasheet figure. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `pi4_case_length` (mm): Outside of the finned case, front to back. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `pi4_case_width` (mm): Outside of the finned case, side to side. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `pi4_case_height` (mm): Case base to top of the fins. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `pi4_case_position_from_rear` (mm): Case edge to the rear edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `pi4_case_position_from_right` (mm): Case edge to the right edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## ping-sensor
+
+- [ ] `ping_board_length` (mm): Board length, no datasheet fetched. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_board_width` (mm): Board width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_board_height` (mm): Board plus transducers, front to back. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_transducer_diameter` (mm): One of the two round transducers. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_transducer_spacing` (mm): Centre to centre of the two transducers. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_mount_hole_diameter` (mm): Board mounting hole. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ping_glue_offset_from_horn` (mm): Sensor centre to the servo horn centre. Measure with a tape or ruler (the calliper display is faulty).
+
+## pan-servo
+
+- [ ] `servo_body_length` (mm): Body length without tabs, no datasheet fetched. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_body_width` (mm): Body width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_body_height` (mm): Body height, excluding horn. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_tab_span` (mm): Across the mounting tabs. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_horn_height_above_plate` (mm): Horn top to the top deck top face. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_position_from_front` (mm): Servo edge to the front edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## kill-switch
+
+- [ ] `switch_body_length` (mm): Body under the plate. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_body_width` (mm): Body under the plate. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_body_height` (mm): Body below the plate underside. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_bushing_diameter` (mm): Threaded bushing, which sets the hole size in the plate. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_bushing_length` (mm): Thread length above the plate. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_lever_height` (mm): Lever above the plate top face. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_hole_position_from_rear` (mm): Hole centre to the rear edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `switch_hole_position_from_left` (mm): Hole centre to the left edge of the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## nimh-battery
+
+- [ ] `battery_length` (mm): Pack length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `battery_width` (mm): Pack width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `battery_height` (mm): Pack height. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `battery_lead_length` (mm): Pack to the EC5 plug. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `battery_position` (mm): Pack position on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## power-bank
+
+- [ ] `bank_length` (mm): Body length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_width` (mm): Body width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_height` (mm): Body thickness. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_capacity` (mAh): Capacity is unknown; read it off the label. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_cable_length` (mm): USB-C cable to the Pi. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
