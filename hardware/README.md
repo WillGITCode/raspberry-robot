@@ -43,3 +43,19 @@ CAD models must be fully parametric and editable by a human: every sketch, body 
 ## Wiring
 
 [wiring.md](wiring.md) records the power paths, the pin table, the breadboard layout and Boss's wiring checklist. Rows carry a source of `repo`, `Boss` or `proposed`; nothing `proposed` is wired.
+
+## Part requirements
+
+What each printed part must do, one `requirements.md` per part folder, for CAD. A part is proven only when Boss has printed and fitted it.
+
+| Part folder | Holds | Status |
+|---|---|---|
+| [pi4-case](pi4-case/requirements.md) | Pi 4 in its finned case | requested |
+| [usb-ssd](usb-ssd/requirements.md) | USB SSD in its enclosure | requested |
+| [power-bank](power-bank/requirements.md) | Aukey power bank | requested |
+| [breadboard](breadboard/requirements.md) | Breadboard, with hold-down | requested |
+| [pan-servo](pan-servo/requirements.md) | Pan servo, by its tabs | requested |
+| [ping-sensor](ping-sensor/requirements.md) | PING))) on the servo horn | requested |
+| [c920](c920/requirements.md) | C920 on a rear mast | requested |
+| [l298n](l298n/requirements.md) | L298N between the decks | requested |
+| [nimh-battery](nimh-battery/requirements.md) | NiMH pack, tray between the decks | requested |
