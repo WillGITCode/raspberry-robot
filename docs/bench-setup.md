@@ -4,7 +4,7 @@ The repo holds no host, user or key. Agents and the bench tool reach the Pi thro
 
 ## One-time steps
 
-- [x] Update the Pi 4 bootloader for USB boot (done 2026-11-09 to 11: bootloader current).
+- [x] Update the Pi 4 bootloader (done 2026-11-09 to 11: bootloader current; USB boot is not used while the SSD is parked).
 - [x] Flash the SD card with Imager: Pi OS Lite 64-bit (trixie), the `rover` user with a key, NOPASSWD sudo, Wi-Fi. Root is `/dev/mmcblk0p2`.
 - [x] Add the `rover-bench` alias to `~/.ssh/config`.
 - [ ] Ethernet on the stand (decision 7). Wi-Fi only for now; the provision script leaves the Wi-Fi profile alone, and a broken network needs you at the bench.
