@@ -5,12 +5,12 @@ The repo holds no host, user or key. Agents and the bench tool reach the Pi thro
 ## One-time steps
 
 - [x] Update the Pi 4 bootloader for USB boot (done 2026-11-09 to 11: bootloader current).
-- [x] Flash the USB SSD with Imager: Pi OS Lite 64-bit (trixie), the `rover` user with a key, NOPASSWD sudo, Wi-Fi. Root is `/dev/sda2`.
+- [x] Flash the SD card with Imager: Pi OS Lite 64-bit (trixie), the `rover` user with a key, NOPASSWD sudo, Wi-Fi. Root is `/dev/mmcblk0p2`.
 - [x] Add the `rover-bench` alias to `~/.ssh/config`.
 - [ ] Ethernet on the stand (decision 7). Wi-Fi only for now; the provision script leaves the Wi-Fi profile alone, and a broken network needs you at the bench.
 - [ ] Check the L298N inputs for pull-downs (what the motors do when a pin floats). The stop script drives every pin low rather than releasing it.
 - [ ] Mount the C920 on the desktop facing the stand.
-- [ ] Take a backup image of the SSD after the first good provision, and keep it on the desktop.
+- [ ] Take a backup image of the SD card after the first good provision, and keep it on the desktop.
 
 Motor power stays off until a motor slice says otherwise.
 
