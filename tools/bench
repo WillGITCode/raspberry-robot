@@ -16,6 +16,8 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   status                          service state, deployed commit, who deployed
   stop                            run rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
+  snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
+  clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
 USAGE
   exit 2
 }
@@ -107,9 +109,51 @@ PY
   cmd_stop
 }
 
+# The C920 is found by name; BENCH_CAMERA_INPUT overrides the ffmpeg input args (e.g. a synthetic lavfi source)
+camera_input() {
+  if [ -n "${BENCH_CAMERA_INPUT:-}" ]; then CAM=($BENCH_CAMERA_INPUT); return 0; fi
+  local devs=(/dev/v4l/by-id/*C920*-index0)
+  if [ ! -e "${devs[0]}" ]; then
+    if [ $DRY = 1 ]; then
+      echo "device glob /dev/v4l/by-id/*C920*-index0: no match" >&2
+      devs=('/dev/v4l/by-id/<C920>-index0')
+    else
+      echo "no C920 at /dev/v4l/by-id/*C920*-index0 (is the camera on this machine?)" >&2; exit 1
+    fi
+  else
+    [ $DRY = 1 ] && echo "device glob /dev/v4l/by-id/*C920*-index0: ${devs[0]}" >&2
+  fi
+  CAM=(-f v4l2 -video_size 1280x720 -i "${devs[0]}")
+}
+
+stamp() { date +%Y%m%d-%H%M%S; }
+
+cmd_snap() {
+  [ $# = 0 ] || usage
+  camera_input
+  out="$ROOT/.bench/snaps/$(stamp).jpg"
+  run mkdir -p "$(dirname "$out")"
+  # skip the first frames: the C920 needs a moment for auto exposure
+  run ffmpeg -nostdin -loglevel error -y "${CAM[@]}" -vf select='gte(n\,10)' -frames:v 1 -update 1 "$out"
+  echo "$out"
+}
+
+cmd_clip() {
+  [ $# = 1 ] && [[ $1 =~ ^[0-9]+$ ]] && [ "$1" -gt 0 ] || usage
+  secs=$1
+  camera_input
+  base="$ROOT/.bench/clips/$(stamp)"
+  run mkdir -p "$(dirname "$base")"
+  run ffmpeg -nostdin -loglevel error -y "${CAM[@]}" -t "$secs" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "$base.mp4"
+  # 8 frames spread over the clip, 4x2 grid
+  run ffmpeg -nostdin -loglevel error -y -i "$base.mp4" -vf "fps=8/$secs,scale=320:-1,tile=4x2" -frames:v 1 -update 1 "$base.jpg"
+  echo "$base.mp4"
+  echo "$base.jpg"
+}
+
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
-  deploy|logs|status|stop|drive) "cmd_$c" "$@" ;;
+  deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
   *) usage ;;
 esac
