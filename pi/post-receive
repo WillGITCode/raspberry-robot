@@ -1,0 +1,23 @@
+#!/bin/bash
+# Runs in ~/rover.git on every push: check out the pushed commit, install, log it, restart.
+set -eu
+APP=/home/rover/rover
+while read -r oldrev newrev ref; do
+  [ "$newrev" = "0000000000000000000000000000000000000000" ] && continue
+  mkdir -p "$APP"
+  git --work-tree="$APP" checkout -f "$newrev"
+  # the unit and stop wrapper come from the checkout
+  if ! sudo cmp -s "$APP/pi/rover.service" /etc/systemd/system/rover.service; then
+    sudo install -m 644 "$APP/pi/rover.service" /etc/systemd/system/rover.service
+  fi
+  sudo ln -sfn "$APP/pi/rover-stop" /usr/local/bin/rover-stop
+  # the service reads its commit from ROVER_COMMIT (the checkout has no .git)
+  sudo mkdir -p /etc/systemd/system/rover.service.d
+  printf '[Service]\nEnvironment=ROVER_COMMIT=%s\n' "$newrev" | sudo tee /etc/systemd/system/rover.service.d/commit.conf >/dev/null
+  sudo systemctl daemon-reload
+  # event log: one JSON line in the journal, tagged rover-deploy
+  who=${SSH_CLIENT%% *}
+  printf '{"event":"deploy","commit":"%s","ref":"%s","from":"%s"}\n' "$newrev" "$ref" "${who:-local}" | logger -t rover-deploy
+  echo "deployed $newrev ($ref); restarting rover.service"
+  sudo systemctl restart rover.service || echo "rover.service failed to restart" >&2
+done
