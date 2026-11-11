@@ -37,3 +37,9 @@ CAD models must be fully parametric and editable by a human: every sketch, body 
 | [phone-s7](phone-s7/spec.md) | planned | 5 |
 | [speaker](speaker/spec.md) | planned | 5 |
 | [lidar-ld06](lidar-ld06/spec.md) | planned | 5 |
+| [usb-ssd](usb-ssd/spec.md) | planned | 5 |
+| [breadboard](breadboard/spec.md) | planned | 5 |
+
+## Wiring
+
+[wiring.md](wiring.md) records the power paths, the pin table, the breadboard layout and Boss's wiring checklist. Rows carry a source of `repo`, `Boss` or `proposed`; nothing `proposed` is wired.

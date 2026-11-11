@@ -170,3 +170,19 @@ One line per TBD row in the specs. Tick a line, then put the value in the spec a
 - [ ] `lidar_hole_spacing` (mm): Centre to centre of the base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `lidar_hole_diameter` (mm): Base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `lidar_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## usb-ssd
+
+- [ ] `ssd_enclosure_length` (mm): Enclosure length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_enclosure_width` (mm): Enclosure width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_enclosure_height` (mm): Enclosure thickness. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_cable_length` (mm): USB cable to the Pi, if fixed to the enclosure. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_position` (mm): Where it sits on the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## breadboard
+
+- [ ] `breadboard_length` (mm): Board length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_width` (mm): Board width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_height` (mm): Board thickness, pins to top face. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_hole_pitch` (mm): Hole spacing, to confirm. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_position` (mm): Where it sits on the top deck. Measure with a tape or ruler (the calliper display is faulty).
