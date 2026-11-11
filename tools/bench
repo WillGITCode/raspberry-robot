@@ -54,9 +54,9 @@ cmd_logs() {
   done
   if [ -n "$follow" ]; then
     # bounded stream: the Pi-side timeout ends it
-    remote timeout "$follow" journalctl -u rover -t rover-deploy --since "-$since" -f -o cat --no-pager || [ $? = 124 ]
+    remote timeout "$follow" journalctl -f --since "-$since" -o cat --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-deploy || [ $? = 124 ]
   else
-    remote journalctl -u rover -t rover-deploy --since "-$since" -o cat --no-pager
+    remote journalctl --since "-$since" -o cat --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-deploy
   fi
 }
 
@@ -67,7 +67,15 @@ cmd_status() {
     echo "last deploy: $(journalctl -t rover-deploy -o cat --no-pager | tail -n 1)"'
 }
 
-cmd_stop() { remote sudo rover-stop && echo "motors stopped (all pins low)"; }
+cmd_stop() {
+  # rover-stop cannot claim pins the running service holds ("GPIO busy"); stopping the service runs it as ExecStopPost
+  if ! remote sudo rover-stop 2>/dev/null; then
+    remote sudo systemctl stop rover
+    remote sudo rover-stop
+    echo "rover.service stopped; deploy or 'sudo systemctl start rover' to resume" >&2
+  fi
+  echo "motors stopped (all pins low)"
+}
 
 cmd_drive() {
   [ $# = 3 ] || usage
