@@ -1,0 +1,96 @@
+#!/bin/bash
+# Bench tool: deploy to the Pi, read its logs, show status, stop, drive. Host is the ssh alias rover-bench.
+set -euo pipefail
+HOST=rover-bench
+REMOTE=rover-bench
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+LOCK="$ROOT/.bench/deploy.lock"
+PYTHON=${BENCH_PYTHON:-$ROOT/.venv/bin/python}
+[ -x "$PYTHON" ] || PYTHON=python3
+
+usage() {
+  cat <<'USAGE'
+usage: tools/bench <command>
+  deploy                          pytest, lock, push HEAD, wait for rover.service, print the commit
+  logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
+  status                          service state, deployed commit, who deployed
+  stop                            run rover-stop on the Pi (every motor pin low)
+  drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
+USAGE
+  exit 2
+}
+
+remote() { ssh "$HOST" "$@"; }
+
+cmd_deploy() {
+  (cd "$ROOT" && "$PYTHON" -m pytest -q)
+  mkdir -p "$(dirname "$LOCK")"
+  exec 9>"$LOCK"
+  flock -n 9 || { echo "another deploy holds $LOCK" >&2; exit 1; }
+  commit=$(git -C "$ROOT" rev-parse HEAD)
+  # the hook on the Pi deploys pushes to refs/heads/main
+  git -C "$ROOT" push "$REMOTE" HEAD:refs/heads/main
+  for _ in $(seq 1 30); do
+    if [ "$(remote systemctl is-active rover)" = active ] &&
+       remote journalctl -u rover -o cat -n 20 --no-pager | grep -q "\"commit\": \"$commit\""; then
+      echo "active, commit $commit"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "rover.service not active on $commit after 30 s" >&2
+  remote systemctl status rover --no-pager >&2 || true
+  exit 1
+}
+
+cmd_logs() {
+  since=2m follow=
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --since) since=$2; shift 2 ;;
+      --follow-for) follow=$2; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  if [ -n "$follow" ]; then
+    # bounded stream: the Pi-side timeout ends it
+    remote timeout "$follow" journalctl -u rover -t rover-deploy --since "-$since" -f -o cat --no-pager || [ $? = 124 ]
+  else
+    remote journalctl -u rover -t rover-deploy --since "-$since" -o cat --no-pager
+  fi
+}
+
+cmd_status() {
+  remote 'echo "service: $(systemctl is-active rover)"
+    echo "last event: $(journalctl -u rover -o cat -n 1 --no-pager)"
+    echo "last start: $(journalctl -u rover -o cat --no-pager | grep "\"event\": \"start\"" | tail -n 1)"
+    echo "last deploy: $(journalctl -t rover-deploy -o cat --no-pager | tail -n 1)"'
+}
+
+cmd_stop() { remote sudo rover-stop && echo "motors stopped (all pins low)"; }
+
+cmd_drive() {
+  [ $# = 3 ] || usage
+  left=$1 right=$2 secs=$3
+  # resend every 100 ms (the deadman coasts after 300 ms), then stop
+  remote sudo python3 - "$left" "$right" "$secs" <<'PY'
+import socket, sys, time
+left, right, secs = sys.argv[1:4]
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+end = time.monotonic() + float(secs)
+try:
+    while time.monotonic() < end:
+        s.sendto(f"{left} {right}".encode(), "/run/rover/drive.sock")
+        time.sleep(0.1)
+finally:
+    s.sendto(b"0 0", "/run/rover/drive.sock")
+PY
+  cmd_stop
+}
+
+[ $# -ge 1 ] || usage
+c=$1; shift
+case $c in
+  deploy|logs|status|stop|drive) "cmd_$c" "$@" ;;
+  *) usage ;;
+esac
