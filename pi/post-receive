@@ -5,7 +5,7 @@ APP=/home/rover/rover
 while read -r oldrev newrev ref; do
   [ "$newrev" = "0000000000000000000000000000000000000000" ] && continue
   mkdir -p "$APP"
-  git --work-tree="$APP" checkout -f "$newrev"
+  git --work-tree="$APP" checkout -qf "$newrev"
   # the unit and stop wrapper come from the checkout
   if ! sudo cmp -s "$APP/pi/rover.service" /etc/systemd/system/rover.service; then
     sudo install -m 644 "$APP/pi/rover.service" /etc/systemd/system/rover.service
