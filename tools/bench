@@ -14,7 +14,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   deploy                          pytest, lock, push HEAD, wait for rover.service, print the commit
   logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
   status                          service state, deployed commit, who deployed
-  stop                            run rover-stop on the Pi (every motor pin low)
+  stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
@@ -81,13 +81,11 @@ cmd_status() {
 }
 
 cmd_stop() {
-  # rover-stop cannot claim pins the running service holds ("GPIO busy"); stopping the service runs it as ExecStopPost
-  if ! remote sudo rover-stop 2>/dev/null; then
-    remote sudo systemctl stop rover
-    remote sudo rover-stop
-    echo "rover.service stopped; deploy or 'sudo systemctl start rover' to resume" >&2
-  fi
-  echo "motors stopped (all pins low)"
+  # The running service holds the pins, so rover-stop alone fails "GPIO busy". Stop the service first (its ExecStopPost
+  # runs rover-stop once the pins are free; a no-op if it is not running), then run rover-stop for the not-running case.
+  remote sudo systemctl stop rover
+  remote sudo rover-stop
+  echo "motors stopped (all pins low); rover.service stopped, deploy or 'sudo systemctl start rover' to resume" >&2
 }
 
 cmd_drive() {
