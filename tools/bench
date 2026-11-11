@@ -10,7 +10,7 @@ PYTHON=${BENCH_PYTHON:-$ROOT/.venv/bin/python}
 
 usage() {
   cat <<'USAGE'
-usage: tools/bench <command>
+usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs nothing)
   deploy                          pytest, lock, push HEAD, wait for rover.service, print the commit
   logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
   status                          service state, deployed commit, who deployed
@@ -20,10 +20,21 @@ USAGE
   exit 2
 }
 
-remote() { ssh "$HOST" "$@"; }
+DRY=0
+if [ "${1:-}" = --dry-run ]; then DRY=1; shift; fi
+
+# --dry-run prints each command instead of running it
+run() { if [ $DRY = 1 ]; then echo "+ $*"; else "$@"; fi; }
+remote() { run ssh "$HOST" "$@"; }
 
 cmd_deploy() {
-  (cd "$ROOT" && "$PYTHON" -m pytest -q)
+  run "$PYTHON" -m pytest -q "$ROOT"
+  if [ $DRY = 1 ]; then
+    echo "+ flock -n $LOCK"
+    echo "+ git -C $ROOT push $REMOTE HEAD:refs/heads/main"
+    echo "+ (up to 30x) ssh $HOST systemctl is-active rover; ssh $HOST journalctl -u rover -o cat -n 20 --no-pager | grep '\"commit\": \"<HEAD>\"'"
+    return 0
+  fi
   mkdir -p "$(dirname "$LOCK")"
   exec 9>"$LOCK"
   flock -n 9 || { echo "another deploy holds $LOCK" >&2; exit 1; }
