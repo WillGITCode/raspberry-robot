@@ -211,7 +211,7 @@ cmd_check_stops() {
   sleep 1
   log=$(journal "$mark")
   if [ $DRY = 1 ]; then echo "skip: check deadman timing in log (dry-run)"; else
-    # last drive event to deadman_stop: 300 ms deadman plus one 20 ms tick and jitter, so <= 0.35 s
+    # last drive event to deadman_stop: 300 ms deadman plus one 20 ms tick and jitter, so <= 0.32 s
     rc=0
     echo "$log" | "$PYTHON" -c '
 import json, sys
@@ -220,7 +220,7 @@ d = [e["t"] for e in ev if e["event"] == "drive" and e["left"] == 0.5]
 s = [e["t"] for e in ev if e["event"] == "deadman_stop" and d and e["t"] >= d[-1]]
 gap = s[0] - d[-1] if d and s else None
 print("deadman gap: %s s" % ("none" if gap is None else "%.3f" % gap))
-sys.exit(0 if gap is not None and gap <= 0.35 else 1)' || rc=$?
+sys.exit(0 if gap is not None and gap <= 0.32 else 1)' || rc=$?
     step "deadman stop within 300 ms of the last command" $rc
   fi
 
@@ -228,7 +228,7 @@ sys.exit(0 if gap is not None and gap <= 0.35 else 1)' || rc=$?
   start_service
   mark=$(now_remote)
   feed 0.5 0.5 0.5 0
-  remote sudo systemctl kill -s KILL rover
+  remote sudo systemctl kill --kill-whom=main -s KILL rover
   sleep 2
   log=$(journal "$mark")
   if [ $DRY = 1 ]; then echo "skip: check rover-stop in log (dry-run)"; else
