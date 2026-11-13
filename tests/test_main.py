@@ -56,18 +56,41 @@ def test_drive_then_silence_logs_deadman_stop(motors):
 
 
 def test_loop_that_stops_ticking_stops_watchdog(motors):
-    # a hung loop never reaches the notify call; model it as serve ending after 2 ticks
-    _, notifier, _ = run(motors, 2)
-    assert notifier.messages.count("WATCHDOG=1") == 2
-    before = len(notifier.messages)
-    assert len(notifier.messages) == before  # nothing more arrives without ticks
+    clock, out, notifier = FakeClock(), io.StringIO(), FakeNotifier()
+
+    class Stalls:
+        # tick 0 is normal; tick 1 hangs in poll for 5 s and never completes
+        n = 0
+
+        def poll(self):
+            self.n += 1
+            if self.n == 2:
+                stalled_at.append(len(notifier.messages))
+                clock.advance(5.0)
+                raise RuntimeError("hung")
+            return []
+
+    stalled_at = []
+    with pytest.raises(RuntimeError):
+        serve(motors, clock, notifier, Events(out, clock), Stalls(), ticks=10,
+              sleep=lambda s: clock.advance(0.02), commit="abc")
+    assert notifier.messages == ["READY=1", "WATCHDOG=1"]
+    assert len(notifier.messages) == stalled_at[0]  # nothing sent during or after the stall
 
 
-    def slow(s):
-        pass
+def test_tick_that_runs_past_the_period_logs_overrun(motors):
+    clock, out = FakeClock(), io.StringIO()
 
-    events, _, _ = run(motors, 1, sleep=slow)
-    assert not any(e["event"] == "tick_overrun" for e in events)
+    class Slow:
+        def poll(self):
+            clock.advance(0.05)  # tick takes 50 ms against a 20 ms period
+            return []
+
+    serve(motors, clock, FakeNotifier(), Events(out, clock), Slow(), ticks=1,
+          sleep=lambda s: None, commit="abc")
+    events = [json.loads(line) for line in out.getvalue().splitlines()]
+    overrun = next(e for e in events if e["event"] == "tick_overrun")
+    assert overrun["elapsed"] > overrun["period"]
 
 
 def test_fault_is_logged_and_motors_coast(motors, pins):
