@@ -1,0 +1,6 @@
+#!/bin/sh
+# Drive every motor pin low (coast). Needs the pins free: while rover.service runs it fails "GPIO busy", so stop the
+# service first (ExecStopPost runs this). tools/bench stop does both.
+cd "$(dirname "$(readlink -f "$0")")/.." || exit 1
+"${ROVER_PYTHON:-.venv/bin/python}" -m rover.stop || { logger -t rover-stop "failed to drive motor pins low"; exit 1; }
+logger -t rover-stop "motor pins low (coast)"

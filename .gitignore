@@ -130,3 +130,6 @@ dmypy.json
 
 # Robot log files
 robot.log
+
+# Bench tool state
+.bench/
