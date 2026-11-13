@@ -52,6 +52,7 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
     notifier.notify("READY=1")
     manager = ModeManager(events) if pad is not None else None
     was_stale = True
+    socket_cmd = None
     n = 0
     try:
         while ticks is None or n < ticks:
@@ -60,10 +61,17 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                 if isinstance(item, Exception):
                     events.emit("fault", error=f"bad drive input: {item}")
                     continue
-                loop.submit(item)
+                socket_cmd = item
+                if manager is None:
+                    loop.submit(item)
                 events.emit("drive", left=item.left, right=item.right, source=item.source)
-            if manager is not None:  # the pad and its mode are the one source of motion
-                loop.submit(manager.update(pad.poll(), clock.now()))
+            if manager is not None:
+                # a live pad mode wins; with no pad command the socket drives, except Back always stops
+                state = pad.poll()
+                cmd = manager.update(state, clock.now())
+                if state.back:
+                    socket_cmd = None
+                loop.submit(cmd if cmd is not None else socket_cmd)
             loop.tick()
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")

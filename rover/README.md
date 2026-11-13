@@ -33,4 +33,4 @@ Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default 
 
 ## Pad
 
-`rover/pad.py` reads the Xbox 360 pad with python-evdev, polled once per tick (no thread): deadzone 0.1, sticks normalised to -1..1; a missing or vanished device gives zeros and `lost=True`. `rover/manual.py` maps it to a `DriveCommand` (source `person`): left stick forward/back, right stick turn, speed cap `SPEED_CAP` 0.5, right trigger raises it to 1.0. Not yet wired into `main.py`.
+`rover/pad.py` reads the Xbox 360 pad with python-evdev, polled once per tick (no thread): deadzone 0.1, sticks normalised to -1..1; a missing or vanished device gives zeros and `lost=True`. `rover/manual.py` maps it to a `DriveCommand` (source `person`): left stick forward/back, right stick turn, speed cap `SPEED_CAP` 0.5, right trigger raises it to 1.0. Wired into `main.py` through the `ModeManager`; when the active mode gives no command (idle, pad lost) the drive socket (`tools/bench drive`) drives, and Back clears it.

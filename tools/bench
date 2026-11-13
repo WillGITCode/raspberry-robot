@@ -18,6 +18,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
+  pad-check                       list evdev devices, then 20 s of live pad readings and mode_change events (read-only)
   check-stops                     scripted run on the stand: drive, deadman, kill -9, stop; pass/fail per step (moves the wheels)
 USAGE
   exit 2
@@ -254,10 +255,56 @@ sys.exit(0 if gap is not None and gap <= 0.32 else 1)' || rc=$?
   return $FAILED
 }
 
+# pad-check: runs on the Pi with the service's venv; reads the pad without grabbing it, so rover.service keeps running
+cmd_pad_check() {
+  [ $# = 0 ] || usage
+  remote /home/rover/rover/.venv/bin/python - <<'PY'
+import json, select, subprocess, time
+try:
+    import evdev
+except ImportError:
+    raise SystemExit("python-evdev missing on the Pi: sudo apt install python3-evdev (provision.sh does not install it yet)")
+print("== evdev devices")
+devs = [evdev.InputDevice(p) for p in evdev.list_devices()]
+for d in devs:
+    print(f"  {d.path}  {d.name!r}")
+pads = [d for d in devs if "Xbox 360" in d.name]
+if not pads:
+    raise SystemExit("blocked: no 'Xbox 360' device (is the receiver plugged in and the pad on?)")
+pad = pads[0]
+print(f"== reading {pad.path} for 20 s: move sticks, trigger, press Start and Back")
+j = subprocess.Popen(["journalctl", "-f", "-n", "0", "-o", "cat", "--no-pager", "-u", "rover"],
+                     stdout=subprocess.PIPE, text=True)
+t0 = time.monotonic()
+while time.monotonic() - t0 < 20:
+    ready, _, _ = select.select([pad.fd, j.stdout], [], [], 0.5)
+    t = time.monotonic() - t0
+    if pad.fd in ready:
+        try:
+            for ev in pad.read():
+                if ev.type == evdev.ecodes.EV_ABS:
+                    name = evdev.ecodes.bytype[ev.type].get(ev.code, ev.code)
+                    print(f"{t:6.2f} ABS {name if isinstance(name, str) else name[0]} {ev.value}")
+                elif ev.type == evdev.ecodes.EV_KEY:
+                    name = evdev.ecodes.bytype[ev.type].get(ev.code, ev.code)
+                    print(f"{t:6.2f} KEY {name if isinstance(name, str) else name[0]} {ev.value}")
+        except OSError:
+            print(f"{t:6.2f} pad unplugged")
+            break
+    if j.stdout in ready:
+        line = j.stdout.readline()
+        if '"mode_change"' in line:
+            print(f"{t:6.2f} {line.strip()}")
+j.terminate()
+print("== done")
+PY
+}
+
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
   deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
+  pad-check) cmd_pad_check "$@" ;;
   check-stops) cmd_check_stops "$@" ;;
   *) usage ;;
 esac
