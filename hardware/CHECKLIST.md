@@ -170,3 +170,32 @@ One line per TBD row in the specs. Tick a line, then put the value in the spec a
 - [ ] `lidar_hole_spacing` (mm): Centre to centre of the base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `lidar_hole_diameter` (mm): Base mounting holes. Measure with a tape or ruler (the calliper display is faulty).
 - [ ] `lidar_position` (mm): Where it sits on the robot. Measure with a tape or ruler (the calliper display is faulty).
+
+## usb-ssd
+
+- [ ] `ssd_enclosure_length` (mm): Enclosure length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_enclosure_width` (mm): Enclosure width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_enclosure_height` (mm): Enclosure thickness. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_cable_length` (mm): USB cable to the Pi, if fixed to the enclosure. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_position` (mm): Where it sits on the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## breadboard
+
+- [ ] `breadboard_length` (mm): Board length. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_width` (mm): Board width. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_height` (mm): Board thickness, pins to top face. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_hole_pitch` (mm): Hole spacing, to confirm. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `breadboard_position` (mm): Where it sits on the top deck. Measure with a tape or ruler (the calliper display is faulty).
+
+## part-requirements
+
+New dimensions the part requirements depend on (not yet in any spec). Put each value in the part's `requirements.md` or the owning spec, then tick it.
+
+- [ ] `mast_height` (mm): C920 mast height, set when Boss fits it.
+- [ ] `lower_deck_mount_positions` (mm): Lower-deck holes or slots usable for the L298N carrier and the NiMH tray. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `ssd_port_position` (mm): Where the USB port sits on the SSD enclosure. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `bank_port_positions` (mm): Which face of the power bank carries each port and the button. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_tab_hole_diameter` (mm): Hole in each servo mounting tab. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_horn_length` (mm): Length of the servo horn. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_horn_hole_spacing` (mm): Centre to centre of the horn screw holes. Measure with a tape or ruler (the calliper display is faulty).
+- [ ] `servo_sweep_angle` (deg): Angle the code pans the servo through. Boss to say.
