@@ -11,3 +11,6 @@ class Events:
     def emit(self, event, **fields):
         self.stream.write(json.dumps({"t": self.clock.now(), "event": event, **fields}) + "\n")
         self.stream.flush()
+
+    def mode_change(self, old, new, source):
+        self.emit("mode_change", **{"from": old, "to": new, "source": source})
