@@ -7,7 +7,9 @@ import time
 from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
 from rover.loop import TickLoop
+from rover.modes import ModeManager
 from rover.motors import Motors
+from rover.pad import Pad
 
 PERIOD_S = 0.02
 
@@ -43,11 +45,12 @@ def current_commit():
 
 
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
-          period=PERIOD_S, sleep=time.sleep, commit="unknown"):
+          period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None):
     """Run the tick loop until `ticks` ticks are done (forever if None)."""
     loop = TickLoop(motors, clock)
     events.emit("start", commit=commit)
     notifier.notify("READY=1")
+    manager = ModeManager(events) if pad is not None else None
     was_stale = True
     n = 0
     try:
@@ -59,6 +62,8 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                     continue
                 loop.submit(item)
                 events.emit("drive", left=item.left, right=item.right, source=item.source)
+            if manager is not None:  # the pad and its mode are the one source of motion
+                loop.submit(manager.update(pad.poll(), clock.now()))
             loop.tick()
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")
@@ -83,7 +88,7 @@ def main():
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     try:
-        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit())
+        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(), pad=Pad())
     finally:
         drive_input.close()
         motors.close()
