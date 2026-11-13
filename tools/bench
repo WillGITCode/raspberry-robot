@@ -18,6 +18,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
+  check-stops                     scripted run on the stand: drive, deadman, kill -9, stop; pass/fail per step (moves the wheels)
 USAGE
   exit 2
 }
@@ -88,13 +89,11 @@ cmd_stop() {
   echo "motors stopped (all pins low); rover.service stopped, deploy or 'sudo systemctl start rover' to resume" >&2
 }
 
-cmd_drive() {
-  [ $# = 3 ] || usage
-  left=$1 right=$2 secs=$3
-  # resend every 100 ms (the deadman coasts after 300 ms), then stop
-  remote sudo python3 - "$left" "$right" "$secs" <<'PY'
+# feed <left> <right> <seconds> <final>: resend every 100 ms (the deadman coasts after 300 ms); final=1 ends with "0 0"
+feed() {
+  remote sudo python3 - "$1" "$2" "$3" "$4" <<'PY'
 import socket, sys, time
-left, right, secs = sys.argv[1:4]
+left, right, secs, final = sys.argv[1:5]
 s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 end = time.monotonic() + float(secs)
 try:
@@ -102,8 +101,14 @@ try:
         s.sendto(f"{left} {right}".encode(), "/run/rover/drive.sock")
         time.sleep(0.1)
 finally:
-    s.sendto(b"0 0", "/run/rover/drive.sock")
+    if final == "1":
+        s.sendto(b"0 0", "/run/rover/drive.sock")
 PY
+}
+
+cmd_drive() {
+  [ $# = 3 ] || usage
+  feed "$1" "$2" "$3" 1
   cmd_stop
 }
 
@@ -149,9 +154,110 @@ cmd_clip() {
   echo "$base.jpg"
 }
 
+# check-stops: the stop paths on the real robot, on its stand (wheels off the ground). Speed 0.5, each drive <= 2 s.
+# Every step prints "pass: ..." or "fail: ..."; the exit trap stops the motors however the run ends.
+FAILED=0
+step() { # step <name> <exit-status>
+  if [ "$2" = 0 ]; then echo "pass: $1"; else echo "fail: $1"; FAILED=1; fi
+}
+
+now_remote() { [ $DRY = 1 ] && { echo "<pi time>"; return 0; }; remote date '+%Y-%m-%d\ %H:%M:%S'; }
+# the service journal and the rover-stop journal since a Pi timestamp
+journal() { remote "journalctl --since '$1' -o cat --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-stop"; }
+
+start_service() {
+  [ $DRY = 1 ] && { remote sudo systemctl start rover; return 0; }
+  remote sudo systemctl start rover
+  for _ in $(seq 1 10); do
+    [ "$(remote systemctl is-active rover)" = active ] && return 0
+    sleep 1
+  done
+  return 1
+}
+
+cmd_check_stops() {
+  [ $# = 0 ] || usage
+  trap 'rc=$?; trap - EXIT; echo "stopping motors" >&2; cmd_stop || echo "WARNING: stop failed, cut motor power" >&2; [ $FAILED = 0 ] || rc=1; exit $rc' EXIT
+  local mark log rc clip_pid
+
+  echo "== 1. snap before"
+  if [ $DRY = 1 ]; then cmd_snap; else cmd_snap >/dev/null && step "snap before" 0 || step "snap before" 1; fi
+
+  echo "== 2. drive both sides forward 0.5 for 2 s, with a 4 s clip"
+  start_service
+  mark=$(now_remote)
+  if [ $DRY = 1 ]; then
+    echo "+ (background) tools/bench clip 4"; feed 0.5 0.5 2 1
+  else
+    ( cmd_clip 4 >.bench/check-stops-clip.txt ) &
+    clip_pid=$!
+    sleep 1.5   # the clip's first frames are camera warm-up
+    feed 0.5 0.5 2 1
+    wait $clip_pid
+    cat .bench/check-stops-clip.txt
+    cmd_snap
+  fi
+  sleep 0.5
+  log=$(journal "$mark")
+  if [ $DRY = 1 ]; then echo "skip: check drive events in log (dry-run)"; else
+    rc=0; { echo "$log" | grep -q '"event": "drive", "left": 0.5, "right": 0.5' && echo "$log" | grep -q '"event": "deadman_stop"'; } || rc=$?
+    step "log has drive 0.5 0.5 then the stop" $rc
+  fi
+
+  echo "== 3. drive, stop sending, deadman within 300 ms"
+  start_service
+  mark=$(now_remote)
+  feed 0.5 0.5 1 0
+  sleep 1
+  log=$(journal "$mark")
+  if [ $DRY = 1 ]; then echo "skip: check deadman timing in log (dry-run)"; else
+    # last drive event to deadman_stop: 300 ms deadman plus one 20 ms tick and jitter, so <= 0.32 s
+    rc=0
+    echo "$log" | "$PYTHON" -c '
+import json, sys
+ev = [json.loads(l) for l in sys.stdin if l.startswith("{")]
+d = [e["t"] for e in ev if e["event"] == "drive" and e["left"] == 0.5]
+s = [e["t"] for e in ev if e["event"] == "deadman_stop" and d and e["t"] >= d[-1]]
+gap = s[0] - d[-1] if d and s else None
+print("deadman gap: %s s" % ("none" if gap is None else "%.3f" % gap))
+sys.exit(0 if gap is not None and gap <= 0.32 else 1)' || rc=$?
+    step "deadman stop within 300 ms of the last command" $rc
+  fi
+
+  echo "== 4. drive, kill -9 the service, stop script runs"
+  start_service
+  mark=$(now_remote)
+  feed 0.5 0.5 0.5 0
+  remote sudo systemctl kill --kill-whom=main -s KILL rover
+  sleep 2
+  log=$(journal "$mark")
+  if [ $DRY = 1 ]; then echo "skip: check rover-stop in log (dry-run)"; else
+    rc=0; echo "$log" | grep -q 'motor pins low (coast)' || rc=$?
+    step "rover-stop ran after kill -9 (motor pins low)" $rc
+  fi
+
+  echo "== 5. drive, then tools/bench stop"
+  start_service
+  mark=$(now_remote)
+  feed 0.5 0.5 1 0
+  cmd_stop
+  log=$(journal "$mark")
+  if [ $DRY = 1 ]; then echo "skip: check stop in log (dry-run)"; else
+    rc=0; echo "$log" | grep -q 'motor pins low (coast)' || rc=$?
+    step "bench stop: rover-stop logged, motor pins low" $rc
+    rc=0; [ "$(remote systemctl is-active rover || true)" != active ] || rc=1
+    step "bench stop: service not running" $rc
+  fi
+
+  [ $DRY = 1 ] && { echo "check-stops: dry run, nothing executed or checked"; return 0; }
+  [ $FAILED = 0 ] && echo "check-stops: all steps pass (stand only, wheels off the ground)" || echo "check-stops: FAILED"
+  return $FAILED
+}
+
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
   deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
+  check-stops) cmd_check_stops "$@" ;;
   *) usage ;;
 esac
