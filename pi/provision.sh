@@ -30,7 +30,7 @@ put() { # path mode content
 
 # apt packages
 missing=""
-for p in python3-gpiozero python3-lgpio git; do dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+for p in python3-gpiozero python3-lgpio python3-evdev git; do dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"; done
 if [ -n "$missing" ]; then
   sudo apt-get update -qq
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $missing

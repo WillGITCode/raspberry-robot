@@ -7,9 +7,13 @@ import time
 from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
 from rover.loop import TickLoop
-from rover.modes import ModeManager
 from rover.motors import Motors
-from rover.pad import Pad
+
+try:
+    from rover.modes import ModeManager
+    from rover.pad import Pad
+except ImportError:  # python-evdev missing: run without a pad, socket input still drives
+    ModeManager = Pad = None
 
 PERIOD_S = 0.02
 
@@ -96,7 +100,7 @@ def main():
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     try:
-        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(), pad=Pad())
+        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(), pad=Pad() if Pad else None)
     finally:
         drive_input.close()
         motors.close()

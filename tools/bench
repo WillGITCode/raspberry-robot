@@ -263,7 +263,7 @@ import json, select, subprocess, time
 try:
     import evdev
 except ImportError:
-    raise SystemExit("python-evdev missing on the Pi: sudo apt install python3-evdev (provision.sh does not install it yet)")
+    raise SystemExit("python-evdev missing on the Pi: sudo apt install python3-evdev")
 print("== evdev devices")
 devs = [evdev.InputDevice(p) for p in evdev.list_devices()]
 for d in devs:
