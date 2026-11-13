@@ -268,9 +268,9 @@ print("== evdev devices")
 devs = [evdev.InputDevice(p) for p in evdev.list_devices()]
 for d in devs:
     print(f"  {d.path}  {d.name!r}")
-pads = [d for d in devs if "Xbox 360" in d.name]
+pads = [d for d in devs if "xbox 360" in d.name.lower() or "x-box 360" in d.name.lower()]
 if not pads:
-    raise SystemExit("blocked: no 'Xbox 360' device (is the receiver plugged in and the pad on?)")
+    raise SystemExit("blocked: no Xbox/X-Box 360 device (is the receiver plugged in and the pad on?)")
 pad = pads[0]
 print(f"== reading {pad.path} for 20 s: move sticks, trigger, press Start and Back")
 j = subprocess.Popen(["journalctl", "-f", "-n", "0", "-o", "cat", "--no-pager", "-u", "rover"],

@@ -6,7 +6,7 @@ from evdev import InputDevice, ecodes, list_devices
 DEADZONE = 0.1
 STICK_MAX = 32768.0
 TRIGGER_MAX = 255.0
-PAD_NAME = "Xbox 360"
+PAD_NAMES = ("xbox 360", "x-box 360")  # the kernel names it "Microsoft X-Box 360 pad"
 
 
 @dataclass(frozen=True)
@@ -29,10 +29,10 @@ def _stick(raw):
     return 0.0 if abs(v) < DEADZONE else v
 
 
-def find_pad(name=PAD_NAME):
+def find_pad(names=PAD_NAMES):
     for path in list_devices():
         dev = InputDevice(path)
-        if name in dev.name:
+        if any(n in dev.name.lower() for n in names):
             os.set_blocking(dev.fd, False)
             return dev
         dev.close()
