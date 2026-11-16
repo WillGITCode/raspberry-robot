@@ -15,6 +15,7 @@ MIN_MOVE = 0.1  # a limit below this snaps to zero: the motors don't turn that s
 FRESH_S = 0.5
 MEMORY_S = 2.0
 BLIND_CAP = 0.3
+EVENT_HOLD_S = 0.15  # a new state is logged once it has held this long; "stop" is logged at once
 
 
 def speed_limit(distance):
@@ -26,10 +27,12 @@ def speed_limit(distance):
 class ObstacleGuard:
     def __init__(self, scanner=None, events=None):
         self.scanner, self.events = scanner, events
-        self.state = None  # clear, slow, stop or blind
+        self.state = None  # clear, slow, stop or blind: applied every tick
         self.limit_value = BLIND_CAP
         self.distance = None
         self._last_valid = None
+        self._since = None  # when the current state began
+        self._logged = None  # the last state written to the log
 
     def limit(self, left, right, now):
         r = self.scanner.ahead(now, FRESH_S) if self.scanner is not None else None
@@ -47,7 +50,9 @@ class ObstacleGuard:
             state = "blind"
         self.limit_value = vmax
         if state != self.state:
-            self.state = state
+            self.state, self._since = state, now
+        if state != self._logged and (state == "stop" or now - self._since >= EVENT_HOLD_S):
+            self._logged = state
             if self.events is not None:
                 self.events.emit("obstacle_limit", state=state, distance=self.distance, limit=vmax)
         v, w = (left + right) / 2, (right - left) / 2

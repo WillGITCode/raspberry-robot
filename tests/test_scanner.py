@@ -54,16 +54,25 @@ def test_never_moves_during_an_echo():
         clock.advance(0.02)
 
 
-def test_ahead_uses_the_freshest_valid_reading_near_ahead():
+def test_a_failed_ping_never_hides_the_valid_ones_before_it():
     clock = FakeClock()
-    dist = iter([0.9, 0.7, None, None])
-    s = Scanner(FakePing(clock, distance=lambda: next(dist, None)), FakeServo())
-    run(s, clock, 0.6)  # settle, then pings
+    seq = iter([0.9, 0.7] + [None] * 40)
+    s = Scanner(FakePing(clock, distance=lambda: next(seq, None)), FakeServo())
+    run(s, clock, 0.6)  # settle, two valid pings, then failures start
+    run(s, clock, 0.06)
+    assert s.latest[AHEAD].distance is None  # the newest reading failed...
     r = s.ahead(clock.now(), max_age=0.5)
-    assert r is not None and r.distance == 0.7
-    run(s, clock, 0.8)  # only failed pings from here on
-    assert s.latest[AHEAD].distance is None  # the newest reading is a failure...
-    assert s.ahead(clock.now(), max_age=0.5) is None  # ...and the last valid one is too old
+    assert r is not None and r.distance == 0.7  # ...but the guard still sees 0.7
+    run(s, clock, 0.8)  # only failures for 0.8 s
+    assert s.ahead(clock.now(), max_age=0.5) is None  # now it is blind
     stats = s.take_stats()
     assert stats["pings"] >= 4 and stats["ping_errors"]["no_echo"] >= 2
     assert s.take_stats() == {"pings": 0, "ping_errors": {}}
+
+
+def test_ahead_takes_the_nearest_of_two_echoes():
+    clock = FakeClock()
+    flip = iter([0.72, 0.48] * 100)
+    s = Scanner(FakePing(clock, distance=lambda: next(flip)), FakeServo())
+    run(s, clock, 1.0)
+    assert s.ahead(clock.now(), max_age=0.5).distance == 0.48
