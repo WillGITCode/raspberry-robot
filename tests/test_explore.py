@@ -151,3 +151,73 @@ def test_moving_away_is_not_stuck():
     for i in range(300):  # 6 s, the reading ahead growing 1 cm a tick (veering away from something)
         mode.tick(Inputs(REST, i * 0.02, Sense(ahead=Reading(95.0, 0.6 + i * 0.006, i * 0.02))))
         assert mode.state == "cruise"
+
+
+def _bench_run(motors, pad_script, inputs, ticks, distance=0.8):
+    from rover.drive_input import ModeRequest
+    from rover.ping import FakePing
+
+    clock, out = FakeClock(), io.StringIO()
+    servo = FakeServo()
+    scanner = Scanner(FakePing(clock, distance=distance), servo)
+    pad = ScriptedPad(pad_script)
+
+    class Input(ScriptedInput):
+        def poll(self):
+            self.n += 1
+            return [x(clock.now()) if callable(x) else x for x in self.script.get(self.n - 1, [])]
+
+    req = lambda name, secs: (lambda t: ModeRequest(name, secs, "bench", t))  # noqa: E731
+    script = {k: [req(*v) if isinstance(v, tuple) else v for v in vs] for k, vs in inputs.items()}
+    levels = []
+
+    def sleep(s):
+        levels.append((motors.left.enable.value, motors.right.enable.value))
+        clock.advance(0.02)
+
+    serve(motors, clock, FakeNotifier(), Events(out, clock), Input(script), ticks=ticks, sleep=sleep,
+          pad=pad, scanner=scanner)
+    events = [json.loads(x) for x in out.getvalue().splitlines()]
+    return events, levels
+
+
+def test_bench_runs_explore_while_the_pad_is_idle_and_ends_it_at_the_deadline(motors):
+    events, levels = _bench_run(motors, {0: REST}, {5: [("explore", 2.0)]}, ticks=200)
+    bench = [e for e in events if e["event"] == "bench_mode"]
+    assert bench[0]["mode"] == "explore" and bench[-1]["reason"] == "deadline"
+    assert any(l > 0 for l, _ in levels[40:100])  # it cruised
+    assert levels[-1] == (0, 0)  # and stopped after its 2 s
+    assert not any(e["event"] == "mode_change" for e in events)  # the pad stayed idle and latched
+
+
+def test_people_and_back_end_a_bench_mode(motors):
+    events, _ = _bench_run(motors, {0: REST, 60: START, 61: REST}, {5: [("explore", 30.0)]}, ticks=100)
+    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "pad"
+    events, _ = _bench_run(motors, {0: REST, 60: PadState(back=True), 61: REST}, {5: [("explore", 30.0)]},
+                           ticks=100)
+    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "pad"
+
+
+def test_bench_cannot_run_manual_and_mode_idle_ends_it(motors):
+    events, _ = _bench_run(motors, {0: REST}, {5: [("manual", 5.0)], 10: [("explore", 5.0)],
+                                               40: [("idle", 1.0)]}, ticks=60)
+    assert any(e["event"] == "fault" and "manual" in e["error"] for e in events)
+    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "replaced"
+
+
+def test_mode_request_parsing():
+    import os
+    import socket
+    import tempfile
+
+    from rover.drive_input import DriveInput, ModeRequest
+
+    path = os.path.join(tempfile.mkdtemp(), "drive.sock")
+    di = DriveInput(path, FakeClock())
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    for line in (b"mode explore 20", b"mode explore", b"mode explore 500", b"0.2 0.2"):
+        s.sendto(line, path)
+    got = di.poll()
+    di.close()
+    assert got[0] == ModeRequest("explore", 20.0, "bench", 0.0) and got[1].seconds == 10.0
+    assert isinstance(got[2], ValueError) and got[3].left == 0.2
