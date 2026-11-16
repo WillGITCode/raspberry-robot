@@ -15,7 +15,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
   status                          service state, deployed commit, who deployed
   stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
-  drive <left> <right> <seconds>  feed the drive input for <seconds>, then stop
+  drive <left> <right> <seconds>  feed the drive input for <seconds>, then "0 0" (the service keeps running)
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
   pad-check                       list evdev devices, then 20 s of live pad readings and mode_change events (read-only)
@@ -111,10 +111,11 @@ finally:
 PY
 }
 
+# drive ends with "0 0" and leaves rover.service running, so the pad works afterwards; the deadman
+# would coast the motors 300 ms after the last command anyway. `tools/bench stop` stops everything.
 cmd_drive() {
   [ $# = 3 ] || usage
   feed "$1" "$2" "$3" 1
-  cmd_stop
 }
 
 # The C920 is found by name; BENCH_CAMERA_INPUT overrides the ffmpeg input args (e.g. a synthetic lavfi source)

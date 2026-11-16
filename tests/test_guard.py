@@ -59,14 +59,38 @@ def test_no_reading_caps_forward_and_remembers_a_close_one():
     assert g.limit(1.0, 1.0, 1.0 + MEMORY_S + 0.1) == (BLIND_CAP, BLIND_CAP)
 
 
-def test_state_changes_are_logged():
+def test_state_changes_are_logged_once_they_hold():
     sc, log = StubScanner(), Log()
     g = ObstacleGuard(sc, log)
-    for d in (1.0, 1.0, 0.4, 0.1, 0.1, 1.0):
-        sc.reading = at(d)
-        g.limit(0.3, 0.3, 0.0)
+    t = 0.0
+    for d in (1.0, 0.4, 0.1, 1.0):  # each held for 0.3 s at 50 Hz
+        for _ in range(15):
+            sc.reading = at(d, t)
+            g.limit(0.3, 0.3, t)
+            t += 0.02
     assert [f["state"] for _, f in log.items] == ["clear", "slow", "stop", "clear"]
     assert all(e == "obstacle_limit" for e, _ in log.items)
+
+
+def test_flapping_is_applied_but_not_logged_every_tick():
+    sc, log = StubScanner(), Log()
+    g = ObstacleGuard(sc, log)
+    t, states = 0.0, set()
+    for i in range(50):  # two echoes, 48 and 72 cm, alternating every tick for 1 s
+        sc.reading = at(0.48 if i % 2 else 0.72, t)
+        g.limit(1.0, 1.0, t)
+        states.add(g.state)
+        t += 0.02
+    assert states == {"slow", "clear"}  # the limit still follows every tick
+    assert len(log.items) <= 1  # the log does not
+
+
+def test_stop_is_logged_at_once():
+    sc, log = StubScanner(), Log()
+    g = ObstacleGuard(sc, log)
+    sc.reading = at(0.1)
+    g.limit(0.3, 0.3, 0.0)
+    assert log.items[-1][1]["state"] == "stop"
 
 
 def test_no_scanner_is_blind():
