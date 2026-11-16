@@ -14,7 +14,8 @@ PATH = "/etc/rover/settings.toml"
 # name: (module, constant, low, high, what it does)
 TUNABLES = {
     "speed_cap": ("rover.manual", "SPEED_CAP", 0.1, 1.0, "pad speed without the trigger"),
-    "boost_cap": ("rover.manual", "BOOST_CAP", 0.1, 1.0, "pad speed with the right trigger"),
+    "boost_cap": ("rover.manual", "BOOST_CAP", 0.1, 1.0,
+                  "pad speed with the right trigger (0.85: at 1.0 motor noise blinds the ping)"),
     "inner_drop": ("rover.manual", "INNER_DROP", 0.0, 1.0,
                    "steering: inner side slowdown at full sideways (0.5 half, 1.0 pivot, 0 none)"),
     "deadzone": ("rover.pad", "DEADZONE", 0.02, 0.3, "stick deadzone"),

@@ -17,7 +17,8 @@ def test_forward_equal_at_cap():
 
 
 def test_trigger_raises_cap():
-    assert cmd(ly=1.0, trigger=1.0) == (1.0, 1.0)
+    assert cmd(ly=1.0, trigger=1.0) == (BOOST_CAP, BOOST_CAP)
+    assert BOOST_CAP <= 0.85  # at full duty the motors' noise blinds the ping (stand test)
 
 
 def test_deadzone_input_gives_zero():
