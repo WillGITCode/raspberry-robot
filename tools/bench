@@ -16,6 +16,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   status                          service state, deployed commit, who deployed
   stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then "0 0" (the service keeps running)
+  mode <name> <seconds>           run a mode (explore) for the bench while the pad is idle; the service ends it (stand only)
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
   pad-check                       list evdev devices, then 20 s of live pad readings and mode_change events (read-only)
@@ -108,6 +109,24 @@ try:
 finally:
     if final == "1":
         s.sendto(b"0 0", "/run/rover/drive.sock")
+PY
+}
+
+# mode: the service runs the mode while no person drives, and ends it itself at the deadline (max 120 s),
+# so a dropped ssh never leaves it running; pad input, Back or `mode idle` end it sooner. It moves the
+# wheels: stand only.
+cmd_mode() {
+  [ $# = 2 ] || usage
+  [[ "$1" =~ ^[a-z]+$ ]] && [[ "$2" =~ ^[0-9]+$ ]] && [ "$2" -ge 1 ] && [ "$2" -le 120 ] || usage
+  remote sudo python3 - "$1" "$2" <<'PY'
+import socket, sys, time
+name, secs = sys.argv[1], int(sys.argv[2])
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+s.sendto(f"mode {name} {secs}".encode(), "/run/rover/drive.sock")
+try:
+    time.sleep(secs)
+finally:
+    s.sendto(b"mode idle", "/run/rover/drive.sock")
 PY
 }
 
@@ -396,7 +415,7 @@ cmd_loop_check() {
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
-  deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
+  deploy|logs|status|stop|drive|mode|snap|clip) "cmd_$c" "$@" ;;
   pad-check) cmd_pad_check "$@" ;;
   ping-check) cmd_ping_check "$@" ;;
   servo-check) cmd_servo_check "$@" ;;

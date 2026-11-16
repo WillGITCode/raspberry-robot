@@ -15,7 +15,7 @@ The tests set `GPIOZERO_PIN_FACTORY=mock` and `GPIOZERO_MOCK_PIN_CLASS=mockpwmpi
 
 Events are JSON lines on stdout: `start` (with commit), `drive` (left, right, source), `mode_change`, `obstacle_limit` (state, distance, limit), `deadman_stop`, `tick_overrun`, `health`, `fault`, `stop`. The commit comes from `$ROVER_COMMIT` or `git rev-parse HEAD`.
 
-Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default `/run/rover/drive.sock`) as `"<left> <right>"` text; the bench tool feeds it. A command older than 300 ms coasts the motors.
+Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default `/run/rover/drive.sock`) as `"<left> <right>"` text, or `"mode <name> [seconds]"` to run a mode for the bench; the bench tool feeds it. A command older than 300 ms coasts the motors.
 
 ## Sensors and the obstacle guard
 
@@ -52,6 +52,7 @@ One mode at a time, in `rover/modes.py`; a mode returns a drive command and neve
 - `tools/bench status` prints the service state, the last `start` event (with the deployed commit) and the last deploy record.
 - `tools/bench logs [--since 2m] [--follow-for 10s]` prints the service's JSON event lines and deploy records; `--follow-for` streams for that long and stops.
 - `tools/bench stop` stops `rover.service` (its `ExecStopPost` runs `rover-stop` once the pins are free), then runs `rover-stop` again for the case where the service was not running: every motor pin low either way. `rover-stop` alone fails "GPIO busy" while the service runs. The service stays stopped until the next deploy.
+- `tools/bench mode <name> <seconds>` (stand only) runs a mode, such as `explore`, for the bench while the pad is idle: the service ends it at the deadline (at most 120 s) even if ssh drops, and any pad input, Back, a bench drive or `mode idle` ends it sooner. The status page shows it as `bench:<name>`, and `bench_mode` events log its start and end. On the stand the wheels can't move the robot, so explore walks through cruise, stuck, back, look and turn.
 - `tools/bench drive <left> <right> <seconds>` sends the command every 100 ms (the deadman coasts after 300 ms), then `0 0`, and leaves the service running (so the pad works afterwards). It moves the wheels: only with the robot on its stand.
 - `tools/bench ping-check [seconds]` runs `rover/ping.py` on the Pi on its own (not through the service) and prints distances, errors and the pin flip time. If `rover.service` already owns the ping, it prints the service's `/state` instead. No motion.
 - `tools/bench servo-check` pans the servo to 95, 10, 95, 170, 95. `tools/bench scan-check` copies `rover/` to a temporary folder on the Pi and prints one full sweep per angle. Servo only, never the wheels; both fail if `rover.service` owns the servo.
