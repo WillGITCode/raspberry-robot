@@ -113,3 +113,41 @@ def test_explores_a_room_in_the_sim_without_touching_a_wall(motors, x, y, headin
     assert closest > 0.18, closest  # never touched a wall (the fan catches shallow walls)
     assert path > 12.0, path  # it really moved around the room
     assert len(looks) >= 3  # and turned away from walls several times
+
+
+def test_backs_off_when_cruising_gets_no_closer(motors):
+    """Pushing on something the ping can't see: the wall ahead stops closing, so it backs off and looks."""
+    clock, out = FakeClock(), io.StringIO()
+    sim = Sim(x=1.0, y=1.0, heading=0.0, width=3.0, height=2.0, max_speed=0.5)  # wall 2 m ahead
+    sim_motors, servo = SimMotors(), FakeServo()
+    scanner = Scanner(SimPing(sim, servo, clock), servo)
+    pad = ScriptedPad({0: REST, 2: START, 3: REST, 5: Y, 6: REST})
+
+    def sleep(s):
+        sim.stuck = 2.0 <= clock.now() < 6.5  # caught on something low for 4.5 s
+        sim.step(sim_motors.left, sim_motors.right, 0.02)
+        clock.advance(0.02)
+
+    serve(sim_motors, clock, FakeNotifier(), Events(out, clock), ScriptedInput({}), ticks=500,
+          sleep=sleep, pad=pad, scanner=scanner)
+    steps = [(round(e["t"], 1), e["state"], e.get("reason")) for e in map(json.loads, out.getvalue().splitlines())
+             if e["event"] == "explore"]
+    backs = [s for s in steps if s[1] == "back"]
+    assert backs and backs[0][2] == "stuck" and 5.0 <= backs[0][0] <= 6.0  # about 3 s after it stuck
+    after = steps[steps.index(backs[0]) + 1]
+    assert after[1] == "look" and after[2] == "backed_off"
+
+
+def test_a_far_wall_is_never_stuck():
+    mode = ExploreMode()
+    far = Reading(95.0, 3.17, 0.0)  # the sensor's longest echo: open space
+    for i in range(300):
+        cmd = mode.tick(Inputs(REST, i * 0.02, Sense(ahead=far)))
+    assert mode.state == "cruise" and cmd.left > 0
+
+
+def test_moving_away_is_not_stuck():
+    mode = ExploreMode()
+    for i in range(300):  # 6 s, the reading ahead growing 1 cm a tick (veering away from something)
+        mode.tick(Inputs(REST, i * 0.02, Sense(ahead=Reading(95.0, 0.6 + i * 0.006, i * 0.02))))
+        assert mode.state == "cruise"

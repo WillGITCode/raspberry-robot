@@ -62,7 +62,7 @@ function radar(ranges) {
   }
 }
 function render(s) {
-  $("mode").textContent = s.mode || "no pad"; $("commit").textContent = s.commit ? s.commit.slice(0, 7) : "";
+  $("mode").textContent = (s.mode || "no pad") + (s.mode_state ? " · " + s.mode_state : ""); $("commit").textContent = s.commit ? s.commit.slice(0, 7) : "";
   const c = s.command || {}; $("src").textContent = c.source || "none"; $("cl").textContent = f2(c.left); $("cr").textContent = f2(c.right);
   bar($("bcl"), c.left); bar($("bcr"), c.right);
   const o = s.output || {}; $("out").textContent = f2(o.left) + " / " + f2(o.right);

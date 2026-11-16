@@ -15,7 +15,7 @@ The Y button is the yellow top button. If nothing happens, run `tools/bench pad-
 
 ## On the floor (a room with some space, kill switch in reach)
 
-4. Press Start, then Y, and let it explore for 2 minutes. Does it turn away before touching walls and furniture? Note what it hits, if anything. Chair legs and soft things are hard for an ultrasonic sensor.
+4. Press Start, then Y, and let it explore for 2 minutes. Does it turn away before touching walls and furniture? Note what it hits, if anything. Chair legs and soft things are hard for an ultrasonic sensor. If it gets caught on something low, it should back off within about 3 s and look around.
    Result:
 5. While it explores, push a stick: it stops exploring and follows the pad.
    Result:

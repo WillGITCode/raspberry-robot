@@ -6,6 +6,8 @@ A small state machine, one command per tick, never blocking (research 05):
     cruise fans the sensor 30 degrees either side and veers away from a side closer than SIDE_M
        \\--(no valid reading)--> wait --(readings back)--> cruise; too long blind: ask for idle
     turn --(TURN_TIMEOUT_S)--> look again; MAX_TURNS failed turns in a row: stuck, ask for idle
+    cruise --(ahead not closing for STUCK_S)--> back --(BACK_S)--> look: pushing on something low
+                                                 that the ping cannot see
 
 It drives as source "robot". The obstacle guard still limits every command, so explore never
 relies on itself alone to stop short. Without encoders it cannot tell a stall from a stop;
@@ -26,6 +28,11 @@ LOOK_TIMEOUT_S = 3.5  # a full 10-170 pass takes about 1.5 s
 TURN_TIMEOUT_S = 4.0
 MAX_TURNS = 3
 BLIND_WAIT_S = 5.0
+STUCK_S = 3.0  # cruising this long while the obstacle ahead gets no closer: stuck
+STUCK_CHANGE_M = 0.05  # ... "no closer" means the reading moved by less than this, either way
+STUCK_RANGE_M = 2.5  # beyond this the reading may just be the sensor's limit: never "stuck"
+BACK_S = 0.8
+BACK_SPEED = 0.3
 SWEEP_ANGLES = 9  # 10, 30, ..., 170
 
 
@@ -59,11 +66,23 @@ def side_close(readings, now):
 class ExploreMode:
     scan = "ahead"
 
+    def _stuck(self, ahead, now):
+        """Cruising, yet the obstacle ahead gets no closer for STUCK_S: the wheels are not moving
+        the robot (something low the ping misses, or a stall)."""
+        if ahead.distance >= STUCK_RANGE_M:
+            self._mark = None
+            return False
+        if self._mark is None or abs(ahead.distance - self._mark[1]) > STUCK_CHANGE_M:
+            self._mark = (now, ahead.distance)  # the robot is moving: restart the window
+            return False
+        return now - self._mark[0] >= STUCK_S
+
     def __init__(self):
         self.state, self.since = None, None
         self.turn_dir, self.turns = 1, 0
         self.request = None  # set to "idle" to ask the manager to leave this mode
         self.events = None  # given by the mode manager
+        self._mark = None  # (time, distance) where the stuck check started
 
     def enter(self):
         self.state = None
@@ -73,6 +92,7 @@ class ExploreMode:
 
     def _go(self, state, now, **why):
         self.state, self.since = state, now
+        self._mark = None
         self.scan = {"look": "sweep", "cruise": "fan"}.get(state, "ahead")
         if self.events is not None:
             self.events.emit("explore", state=state, **why)
@@ -93,11 +113,19 @@ class ExploreMode:
             if ahead.distance < LOOK_AT_M or side == 2:
                 self._go("look", now, distance=round(ahead.distance, 3), sides_close=side == 2)
                 return self._stop(now)
+            if self._stuck(ahead, now):
+                self._go("back", now, reason="stuck", distance=round(ahead.distance, 3))
+                return self._stop(now)
             if side == 1:  # left front close: veer right
                 return DriveCommand(CRUISE_SPEED, CRUISE_SPEED * VEER, "robot", now)
             if side == -1:
                 return DriveCommand(CRUISE_SPEED * VEER, CRUISE_SPEED, "robot", now)
             return DriveCommand(CRUISE_SPEED, CRUISE_SPEED, "robot", now)
+        if self.state == "back":
+            if now - self.since >= BACK_S:
+                self._go("look", now, reason="backed_off")
+                return self._stop(now)
+            return DriveCommand(-BACK_SPEED, -BACK_SPEED, "robot", now)
         if self.state == "wait":
             if ahead is not None:
                 self._go("cruise", now)

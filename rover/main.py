@@ -59,6 +59,7 @@ def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health, pose
         "t": round(now, 3),
         "commit": commit,
         "mode": manager.name if manager is not None else None,
+        "mode_state": getattr(manager.mode, "state", None) if manager is not None else None,
         "latched": manager.latched if manager is not None else None,
         "pad_lost": pad_state.lost if pad_state is not None else None,
         "command": None if cmd is None else {
