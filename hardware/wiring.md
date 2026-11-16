@@ -27,7 +27,7 @@ The L298N's logic supply and the servo supply were not recorded anywhere before 
 
 ## Pin table
 
-BOARD pins in use today come from `src/state/robot_state_machine.py:12-16`. BOARD 3 and 5 are the I2C pins (SDA1, SCL1; from memory of the Pi pinout) and stay free for the GY-521.
+BOARD pins in use today come from `legacy/src/state/robot_state_machine.py:12-16`. BOARD 3 and 5 are the I2C pins (SDA1, SCL1; from memory of the Pi pinout) and stay free for the GY-521.
 
 | BOARD pin | Use | Direction | Source | Note |
 |---|---|---|---|---|

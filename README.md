@@ -1,18 +1,22 @@
-# Raspberry Pi Python Robotics Platform
+# Raspberry Pi robot
 
-This project is an attempt to simplify the setup and development of a simple python based robotics platform that leverages a Raspberry Pi or other SBC with GPiO pins
+A small 4WD robot on a Raspberry Pi 4: an L298N motor driver, an Xbox 360 pad, a Parallax PING))) on a pan servo, and more parts waiting in `hardware/`. Built for fun and learning.
 
-## Setup
+| Path | What |
+|---|---|
+| `rover/` | The robot's code: one non-blocking 50 Hz tick loop, modes, safety filters, drivers. See [rover/README.md](rover/README.md). |
+| `tests/` | Fast tests on gpiozero's mock pins; no Pi needed. |
+| `tools/bench` | Deploy to the bench Pi, read its logs, drive it on the stand, bench camera. |
+| `pi/` | The Pi side: setup script, deploy hook, systemd unit, stop script. |
+| `docs/` | Checklists for runs on the robot. |
+| `hardware/` | Measured specs and requirements for each part, and the wiring record. |
+| `legacy/` | The earlier code generations, kept for reference. |
 
-The code here leverages existing libraries as dependancies, the needed dependancies can be seen and installed using [pipreqs](https://github.com/bndr/pipreqs)
+## Tests
 
-At repository root run:
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e '.[test]'
+.venv/bin/python -m pytest -q
+```
 
-- `pip install pipreqs`
-- `pipreqs`
-
-This will install pipreqs and create a file, `requirements.txt` listing dependancies
-
-- `pip install -r requirements.txt`
-
-And this will install them all in one go
+A pass proves logic only, not the robot.
