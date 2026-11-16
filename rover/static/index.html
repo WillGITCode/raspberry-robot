@@ -38,6 +38,7 @@
     <div class="row"><span>forward limit</span><span id="glim"></span></div>
   </section>
   <section class="panel"><h2>Ping (10° left … 170° right)</h2><canvas id="radar" width="420" height="230"></canvas></section>
+  <section class="panel" id="roompanel" hidden><h2>Room (sim)</h2><canvas id="room" width="420" height="340"></canvas><div id="roominfo" class="dim"></div></section>
   <section class="panel"><h2>Health</h2>
     <div class="row"><span>CPU</span><span id="temp"></span></div>
     <div class="row"><span>power</span><span id="thr"></span></div>
@@ -61,6 +62,25 @@ function radar(ranges) {
     g.globalAlpha = 1;
   }
 }
+function room(p, ranges) {
+  const c = $("room"), g = c.getContext("2d"), [W, H] = p.room, pad = 10;
+  const k = Math.min((c.width - 2 * pad) / W, (c.height - 2 * pad) / H);
+  const X = x => pad + x * k, Y = y => c.height - pad - y * k;  // y up
+  g.clearRect(0, 0, c.width, c.height); g.strokeStyle = "#8a949e"; g.strokeRect(X(0), Y(H), W * k, H * k);
+  g.fillStyle = "#3a434d"; for (const [x0, y0, x1, y1] of p.obstacles || []) g.fillRect(X(x0), Y(y1), (x1 - x0) * k, (y1 - y0) * k);
+  const th = p.heading_deg * Math.PI / 180;
+  for (const r of ranges || []) {
+    if (r.distance == null) continue;
+    const a = th + (95 - r.angle) * Math.PI / 180;
+    g.globalAlpha = Math.max(0.15, 1 - r.age / 3); g.strokeStyle = r.distance < 0.4 ? "#f85149" : "#58a6ff";
+    g.beginPath(); g.moveTo(X(p.x), Y(p.y)); g.lineTo(X(p.x + Math.cos(a) * r.distance), Y(p.y + Math.sin(a) * r.distance)); g.stroke();
+  }
+  g.globalAlpha = 1; g.fillStyle = "#e6e9ec"; g.beginPath();
+  g.moveTo(X(p.x + Math.cos(th) * 0.15), Y(p.y + Math.sin(th) * 0.15));
+  g.lineTo(X(p.x + Math.cos(th + 2.5) * 0.1), Y(p.y + Math.sin(th + 2.5) * 0.1));
+  g.lineTo(X(p.x + Math.cos(th - 2.5) * 0.1), Y(p.y + Math.sin(th - 2.5) * 0.1)); g.fill();
+  $("roominfo").textContent = `x ${p.x.toFixed(2)} y ${p.y.toFixed(2)} heading ${p.heading_deg}°, bumps ${p.bumps}`;
+}
 function render(s) {
   $("mode").textContent = (s.mode || "no pad") + (s.mode_state ? " · " + s.mode_state : ""); $("commit").textContent = s.commit ? s.commit.slice(0, 7) : "";
   const c = s.command || {}; $("src").textContent = (c.source || "none") + (s.driver ? " · " + s.driver : ""); $("cl").textContent = f2(c.left); $("cr").textContent = f2(c.right);
@@ -70,6 +90,7 @@ function render(s) {
   const gd = s.guard || {}; $("gstate").textContent = gd.state || "idle"; $("gstate").className = "big " + (gd.state || "");
   $("gdist").textContent = cm(gd.distance); $("glim").textContent = f2(gd.limit);
   radar(s.ranges);
+  const sim = s.pose && s.pose.room; $("roompanel").hidden = !sim; if (sim) room(s.pose, s.ranges);
   const h = s.health || {}; $("temp").textContent = h.cpu_temp == null ? "–" : h.cpu_temp.toFixed(1) + " °C";
   $("thr").textContent = h.throttled == null ? "–" : (h.throttle_flags && h.throttle_flags.length ? h.throttle_flags.join(", ") : "ok") + " (" + h.throttled + ")";
   $("thr").className = h.throttle_flags && h.throttle_flags.length ? "stop" : "clear";

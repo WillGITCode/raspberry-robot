@@ -36,6 +36,16 @@ Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default 
 - `rover/scanner.py`: owns both. Pattern `ahead` holds 95 degrees and pings at 25 Hz, relaxing the servo once still; `sweep` steps 10 -> 170 -> 10 by 20 degrees (about 3 s a round); `fan` steps 95, 65, 95, 125 (about 0.7 s a round) to catch walls met at a shallow angle. Each reading keeps its angle and time. A mode picks the pattern with a `scan` attribute (default `ahead`).
 - `rover/guard.py`: limits forward speed (the mean of the two sides) by the nearest valid reading within 20 degrees of ahead over the last 0.2 s (the cone often sees two surfaces; the closer wins, and a failed ping never hides the valid ones before it): zero at about 24 cm or less (a limit under 0.1 snaps to zero), full from 60 cm. `obstacle_limit` is logged only while there is forward motion to limit, once a new state holds 0.15 s ("stop" at once). Turning and reverse are never limited, so the robot can back off or spin away. With no valid reading in the last 0.5 s, forward speed is capped at 0.3 (no boost), and a close reading from the last 2 s still counts. If the sensors cannot start, the service runs on with a `fault` event and the guard stays blind (capped).
 
+## Sim runner (develop modes without the robot)
+
+`python -m rover.simrun` runs the real loop (modes, arbiter, guard, ramp, scanner) in a simulated room, with the mode as a bench mode:
+
+- `python -m rover.simrun`: explore in a 5 x 4 m room, live, with the status page on `http://127.0.0.1:8090/` showing a top-down view of the room, the robot and its ping rays.
+- `python -m rover.simrun --headless --minutes 5 --furniture --seed 3`: as fast as possible, with 2 or 3 boxes in the room. It prints one line of metrics (closest approach, path, bumps, looks, stucks, guard stops, faults) and exits non-zero on a bump. Run a few seeds after any change to a mode, the guard or the scanner.
+- `--room 3x3`, `--speed 4` (live, 4x real time) and `--max-speed` (metres per second at full command, a guess until measured).
+
+The sim's robot is a point with one ping ray and no inertia. Results there are logic, not floor behaviour.
+
 ## Settings (tuning without a deploy)
 
 `rover/settings.py` lists the tunables: speed cap and boost, steering `inner_drop`, deadzone, ramp, the guard's distances and blind cap, and explore's speeds and distances. Each one has a safe range. At start the service applies `/etc/rover/settings.toml` (or `$ROVER_SETTINGS`) and logs a `settings` event. A bad value is a `fault`, and that value keeps its default. On the desktop:

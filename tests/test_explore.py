@@ -236,3 +236,11 @@ def test_turn_ends_only_once_ahead_stays_open():
             assert mode.state == "turn"  # never 0.3 s of open in the flicker
         t += 0.02
     assert mode.state == "cruise"
+
+
+def test_simrun_headless_explores_a_furnished_room_without_a_bump(capsys):
+    from rover.simrun import main
+
+    assert main(["--headless", "--minutes", "1", "--furniture", "--seed", "2"]) == 0
+    metrics = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert metrics["bumps"] == 0 and metrics["faults"] == 0 and metrics["path_m"] > 5
