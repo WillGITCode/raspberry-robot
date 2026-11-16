@@ -22,14 +22,38 @@ def test_still_waiting_gives_none():
     assert echo_from_edges([], T0, 0.0) is None
 
 
-@pytest.mark.parametrize("edges,error", [
-    ([(False, T0 + us(900))], "missed_rise"),  # echo began before the pin was an input
-    ([(True, T0 + us(750)), (False, T0 + us(800))], "glitch"),
-    ([(True, T0 + us(750)), (False, T0 + us(750) + us(25_000))], "too_long"),
-])
-def test_bad_echoes_are_no_reading(edges, error):
+def test_too_long_is_no_reading():
+    e = echo_from_edges([(True, T0 + us(750)), (False, T0 + us(750) + us(25_000))], T0, 0.0)
+    assert e.distance is None and e.error == "too_long"
+
+
+def test_a_fall_too_soon_after_the_start_is_not_the_end():
+    # a 50 us dip is noise: the echo goes on until the real fall
+    edges = [(True, T0 + us(750)), (False, T0 + us(800))]
+    assert echo_from_edges(edges, T0, 0.0) is None  # still waiting for the end
+    end = T0 + us(750) + us(2900)
+    edges.append((False, end))
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(2900e-6))
+
+
+def test_motor_noise_in_the_hold_off_is_ignored():
+    edges = [(False, T0 + us(120)), (False, T0 + us(300)), (True, T0 + us(750)),
+             (False, T0 + us(750) + us(2900))]
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(2900e-6))
+
+
+def test_a_start_named_falling_still_counts_as_the_start():
+    # the kernel read the pin after a spike, so the echo's start came out "falling"
+    edges = [(False, T0 + us(760)), (True, T0 + us(1500)), (False, T0 + us(760) + us(2900))]
     e = echo_from_edges(edges, T0, 0.0)
-    assert e.distance is None and e.error == error
+    assert e.distance == pytest.approx(width_to_distance(2900e-6)) and not e.estimated
+
+
+def test_a_lost_start_takes_the_datasheet_hold_off():
+    edges = [(False, T0 + us(750) + us(2900))]  # only the end arrived
+    e = echo_from_edges(edges, T0, 0.0)
+    assert e.estimated and e.error is None
+    assert e.distance == pytest.approx(width_to_distance(2900e-6), abs=0.001)
 
 
 def test_edges_before_the_trigger_are_ignored():
