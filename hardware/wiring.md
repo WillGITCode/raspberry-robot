@@ -16,8 +16,8 @@ An unknown value is `TBD` and is on the checklist at the end. Header pin numbers
 
 | Path | From | To | Source | Note |
 |---|---|---|---|---|
-| Pi supply | Aukey power bank, USB-C | Pi 4 | Boss | Decision 3. The bank ran the Pi for hours before. Load with the SSD is unverified (checklist). |
-| SSD supply | Pi 4 USB 3 port | USB SSD in its enclosure | Boss | The Pi boots from the SSD. The Pi's USB ports share a limited current (about 1.2 A, from memory, not fetched), so the SSD may draw much of it. |
+| Pi supply | Aukey power bank, USB-C | Pi 4 | Boss | On the robot the Pi runs from the bank alone (pad driving decision 8). The bank ran the Pi for hours before. Load under motor load is unverified until Boss's run in `docs/robot-power.md`. On the bench it may use the wall adapter. |
+| SSD supply | Pi 4 USB 3 port | USB SSD in its enclosure | Boss | **Not fitted on the robot**: the bank cannot carry the Pi plus the SSD, so the robot Pi boots from an SD card. The SSD stays parked. The Pi's USB ports share a limited current (about 1.2 A, from memory, not fetched), so the SSD may draw much of it. |
 | Motor supply | NiMH pack, EC5 | kill switch, then L298N motor supply terminal | Boss | The NiMH feeds only the motors and the L298N's 5 V output. |
 | 5 V rail | L298N 5 V output | breadboard 5 V rail | Boss | Needs the L298N's 5 V regulator and jumper (unverified). May sag when the NiMH sags under motor load. The rail is dead while the kill switch is off. |
 | Servo and PING supply | breadboard 5 V rail | pan servo, PING))) | Boss | Keeps servo spikes off the Pi and SSD supply. |
@@ -94,6 +94,6 @@ Do these before any wiring.
 - [ ] Read the encoder board marking and confirm it works at 3.3 V, with a 3.3 V output.
 - [ ] Check the L298N's 5 V regulator jumper is fitted.
 - [ ] Measure the 5 V rail with a meter while the motors run on the stand (it may sag with the NiMH under load).
-- [ ] After a load run on the power bank, run `vcgencmd get_throttled` over SSH and confirm it reports no undervoltage.
+- [ ] After a load run on the power bank (steps in `docs/robot-power.md`), run `vcgencmd get_throttled` over SSH and confirm it reports no undervoltage.
 - [ ] Note which L298N input each of BOARD 18, 11, 13 and 15 goes to.
 - [ ] Confirm the encoder pulse outputs read cleanly once wired (not before).
