@@ -167,3 +167,37 @@ def test_guard_stops_a_forward_drive_at_an_obstacle(motors):
     states = [json.loads(x)["state"] for x in out.getvalue().splitlines() if '"obstacle_limit"' in x]
     assert states[0] == "blind" and "clear" in states and states[-1] == "stop"
     assert seen and seen[-1]["guard"]["state"] == "stop" and seen[-1]["ranges"][0]["angle"] == 95
+
+
+def test_a_failing_scanner_degrades_to_blind_not_a_crash(motors):
+    from rover.command import DriveCommand
+    from rover.guard import BLIND_CAP
+
+    class Broken:
+        latest = {}
+
+        def set_pattern(self, name):
+            pass
+
+        def tick(self, now):
+            raise OSError("gpio gone")
+
+        def ahead(self, now, max_age, window=20.0):
+            return None
+
+        def close(self):
+            self.closed = True
+
+    clock, out, broken = FakeClock(), io.StringIO(), Broken()
+
+    class Input(ScriptedInput):
+        def poll(self):
+            return [DriveCommand(1.0, 1.0, "bench", clock.now())]
+
+    serve(motors, clock, FakeNotifier(), Events(out, clock), Input({}), ticks=30,
+          sleep=lambda s: clock.advance(0.02), scanner=broken)
+    events = [json.loads(x) for x in out.getvalue().splitlines()]
+    assert any(e["event"] == "fault" and "guard is blind" in e["error"] for e in events)
+    assert broken.closed and events[-1]["event"] == "stop"
+    assert motors.left.enable.value == 0  # coasted at the end; while running it was capped:
+    assert any(e["event"] == "obstacle_limit" and e["limit"] == BLIND_CAP for e in events)
