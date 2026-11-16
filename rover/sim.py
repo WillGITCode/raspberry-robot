@@ -14,6 +14,8 @@ class Sim:
         self.max_speed, self.track, self.max_range = max_speed, track, max_range
 
     def step(self, left, right, dt):
+        if getattr(self, "stuck", False):  # wheels spin, the robot stays (a test sets this)
+            return
         vl, vr = left * self.max_speed, right * self.max_speed
         v = (vl + vr) / 2
         self.heading += (vr - vl) / self.track * dt
