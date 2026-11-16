@@ -51,7 +51,8 @@ class SimMotors:
 class SimPing:
     """A ping that measures the Sim along the servo's angle (95 is ahead, 10 is left).
 
-    The echo arrives after the sound's round trip; past max_range there is no echo."""
+    The echo arrives after the sound's round trip. Past the sensor's range it reads about 3.2 m,
+    the real sensor's longest echo (18.5 ms), which counts as a valid "far" reading."""
 
     def __init__(self, sim, servo, clock, ahead=95.0):
         self.sim, self.servo, self.clock, self.ahead = sim, servo, clock, ahead
@@ -64,9 +65,12 @@ class SimPing:
     def trigger(self):
         if self._pending is not None:
             return False
+        from rover.ping import width_to_distance
+
         angle = self.servo.angle if self.servo.angle is not None else self.ahead
         d = self.sim.ping(math.radians(self.ahead - angle))
-        self._pending = (self.clock.now(), d if d < self.sim.max_range else None)
+        # like the real PING))): with nothing in range it holds the echo for its longest, 18.5 ms
+        self._pending = (self.clock.now(), min(d, width_to_distance(18.5e-3)))
         return True
 
     def poll(self):
