@@ -141,6 +141,8 @@ class FakePing:
         if self.clock.now() - t < (self.delay if d is not None else ECHO_TIMEOUT_S):
             return None
         self._pending = None
+        if d == "missed_rise":  # tests: a ping whose rise came before the flip to input
+            return Echo(None, t, "missed_rise", 900.0)
         return Echo(d, t, None if d is not None else "no_echo")
 
     def close(self):
