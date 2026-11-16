@@ -1,6 +1,18 @@
 # rover
 
-The robot's code: one 50 Hz tick loop that never blocks, on an injected clock. Each tick reads the drive inputs and the pad, lets the active mode ask for motion, runs the scanner, then the chain that alone moves the motors: deadman (coast on a command older than 300 ms), obstacle guard, ramp. Motors on gpiozero; the ping on gpiod; the servo on lgpio; a small 2D sim. Tests need no Pi.
+The robot's code: one 50 Hz tick loop that never blocks, on an injected clock. Motors on gpiozero, the ping on gpiod, the servo on lgpio, and a small 2D sim. Tests need no Pi.
+
+## Layout
+
+One tick (`rover/robot.py`, `Robot.tick`), in order:
+
+1. **Inputs**: the drive socket (`rover/drive_input.py`: bench drives and bench modes) and the pad (`rover/pad.py`).
+2. **Arbiter** (`rover/control.py`): who drives this tick, by one priority rule. Stop first (Back or a lost pad latches idle). Then people: the pad's mode, manual or one they started, such as explore. Then agents: today the bench, a bench mode or a socket drive, only while people give no command. Voice and agent control over MCP plug in here, each at its place in that order.
+3. **Sensors**: the scanner (`rover/scanner.py`), with its pattern picked by the active mode.
+4. **Safety chain and motors** (`rover/loop.py`): deadman (coast on a command older than 300 ms), then the obstacle guard, then the ramp. This is the only code that moves the motors.
+5. **Odometry** (off until wired) and **telemetry**: events, the status page snapshot, health.
+
+`rover/main.py` builds the parts and runs `serve()`: the timing, the systemd watchdog and the overrun check. Modes (`rover/modes.py`, `rover/explore.py`) only return drive commands. They never touch hardware, and the arbiter never does either.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e '.[test]'
