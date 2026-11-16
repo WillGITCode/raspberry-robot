@@ -110,8 +110,13 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                 last_pad = key
                 loop.submit(cmd if cmd is not None else socket_cmd)
             if scanner is not None:
-                scanner.set_pattern(getattr(manager.mode, "scan", "ahead") if manager is not None else "ahead")
-                scanner.tick(clock.now())  # before the motors, so the guard sees this tick's echo
+                try:
+                    scanner.set_pattern(getattr(manager.mode, "scan", "ahead") if manager is not None else "ahead")
+                    scanner.tick(clock.now())  # before the motors, so the guard sees this tick's echo
+                except Exception as e:  # degrade, don't crash: the guard goes blind and caps forward speed
+                    events.emit("fault", error=f"scanner failed, guard is blind: {e!r}")
+                    scanner.close()
+                    scanner = guard.scanner = None
             loop.tick()
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")
