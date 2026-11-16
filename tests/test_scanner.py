@@ -17,7 +17,7 @@ def test_servo_pulses_follow_the_old_formula():
     assert pulse_us(0) == pulse_us(10) and pulse_us(200) == pulse_us(170)  # clamped
 
 
-def test_ahead_centres_once_then_pings_at_25_hz_with_the_servo_relaxed():
+def test_ahead_centres_once_then_pings_at_25_hz_with_the_servo_holding():
     clock, servo = FakeClock(), FakeServo()
     ping = FakePing(clock, distance=0.8)
     s = Scanner(ping, servo)
@@ -26,7 +26,7 @@ def test_ahead_centres_once_then_pings_at_25_hz_with_the_servo_relaxed():
     assert all(r.angle == AHEAD and r.distance == 0.8 for r in readings)
     rate = len(readings) / (2.0 - 0.5)  # the first move settles in under 0.5 s
     assert 20 <= rate <= 1 / AHEAD_PERIOD_S + 1
-    assert servo.relaxed  # pulses off before every ping
+    assert not servo.relaxed  # it holds actively: vibration back-drove an unpowered servo
 
 
 def test_sweep_visits_every_angle_in_order():

@@ -1,7 +1,9 @@
 """Pan-and-ping scanner: owns the servo and the ping, one call per tick, never blocks.
 
-Patterns: "ahead" holds the servo at 95 degrees and pings every AHEAD_PERIOD_S. The servo's pulses
-stop before each ping (it has settled by then) and start again with the next move. "sweep" steps
+Patterns: "ahead" holds the servo at 95 degrees and pings every AHEAD_PERIOD_S. The servo holds
+actively the whole time (pulses never stop while the service runs): on the stand, at full speed, an
+unpowered servo was back-driven about 90 degrees by vibration, and the guard read 3 m "clear" with
+an obstacle at 26 cm. "sweep" steps
 10 -> 170 -> 10 by SWEEP_STEP, waits for the move to settle (at least SWEEP_DWELL_S) and pings
 once per step. "fan" steps ahead, 30 left, ahead, 30 right (about 0.7 s a round): it catches walls
 met at a shallow angle, which never echo straight back, and still reads ahead every other ping. Every reading keeps the angle it was taken at. The old code's comments put 10
@@ -51,7 +53,6 @@ class Scanner:
         self._ready_at = None  # the servo has settled at its target from this time
         self._last_trigger = float("-inf")
         self._trigger_angle = None
-        self._relaxed = False
         self._pings, self._errors, self._flips = 0, {}, []
         self._estimated = 0
         self._ahead_cm = []
@@ -108,18 +109,11 @@ class Scanner:
             wait = move_time(self.servo.angle, target)
             self._ready_at = now + (max(wait, SWEEP_DWELL_S) if self.pattern in STEPS else wait)
             self.servo.move(target)
-            self._relaxed = False
             return out
         if self._ready_at is not None and now < self._ready_at:
             return out
         if self.pattern == "ahead" and now - self._last_trigger < AHEAD_PERIOD_S:
             return out
-        if not self._relaxed:
-            # pulses off before every ping: the servo has settled and holds by friction, and its pulse
-            # train (lgpio, on the same GPIO chip) seemed to delay the ping's flip to input
-            # (missed_rise while sweeping, none while still)
-            self.servo.relax()
-            self._relaxed = True
         if self.ping.trigger():
             self._last_trigger, self._trigger_angle = now, target
         return out
