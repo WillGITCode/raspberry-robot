@@ -30,6 +30,7 @@ def test_speed_limit_ramps_between_20_and_60_cm():
     assert speed_limit(0.10) == 0.0 and speed_limit(0.20) == 0.0
     assert speed_limit(0.40) == pytest.approx(0.5)
     assert speed_limit(0.60) == 1.0 and speed_limit(3.0) == 1.0
+    assert speed_limit(0.23) == 0.0 and speed_limit(0.25) > 0.1  # under MIN_MOVE snaps to a stop
 
 
 def test_forward_limited_reverse_and_spin_free():

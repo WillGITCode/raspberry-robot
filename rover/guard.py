@@ -1,7 +1,8 @@
 """Obstacle guard: limits forward speed by the distance ahead. Reverse and turning stay free.
 
 The drive command is split into forward speed v = (left + right) / 2 and turn w = (right - left) / 2.
-Only v is limited: 0 at STOP_M or less, rising linearly to full at SLOW_M. So at a wall the robot
+Only v is limited: 0 at STOP_M or less, rising linearly to full at SLOW_M (a limit under MIN_MOVE
+counts as 0). So at a wall the robot
 can still back off or spin away. With no fresh valid reading ahead, forward speed is capped at
 BLIND_CAP (no boost), and a close reading from the last MEMORY_S still counts: a failed ping is
 never read as "clear".
@@ -9,6 +10,8 @@ never read as "clear".
 
 STOP_M = 0.20
 SLOW_M = 0.60
+MIN_MOVE = 0.1  # a limit below this snaps to zero: the motors don't turn that slowly anyway, and it
+                # ends the creep toward STOP_M (the stop lands at about 24 cm)
 FRESH_S = 0.5
 MEMORY_S = 2.0
 BLIND_CAP = 0.3
@@ -16,7 +19,8 @@ BLIND_CAP = 0.3
 
 def speed_limit(distance):
     """The highest forward speed allowed with an obstacle at `distance` metres."""
-    return max(0.0, min(1.0, (distance - STOP_M) / (SLOW_M - STOP_M)))
+    v = max(0.0, min(1.0, (distance - STOP_M) / (SLOW_M - STOP_M)))
+    return v if v >= MIN_MOVE else 0.0
 
 
 class ObstacleGuard:
