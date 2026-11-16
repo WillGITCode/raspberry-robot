@@ -264,9 +264,27 @@ def start_status(events):
         return None
 
 
+def apply_settings(events, path=None):
+    """The tunables in /etc/rover/settings.toml (or $ROVER_SETTINGS), before anything is built."""
+    from rover import settings
+
+    try:
+        values = settings.load(path or os.environ.get("ROVER_SETTINGS", settings.PATH))
+    except ValueError as e:
+        events.emit("fault", error=str(e))
+        return {}
+    applied, errors = settings.apply(values)
+    for error in errors:
+        events.emit("fault", error=f"setting ignored: {error}")
+    if applied:
+        events.emit("settings", **applied)
+    return applied
+
+
 def main():
     clock = RealClock()
     events = Events(sys.stdout, clock)
+    apply_settings(events)
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     scanner = start_scanner(events, clock)
