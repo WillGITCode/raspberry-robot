@@ -96,9 +96,9 @@ cmd_tune() {
   current=""
   [ $DRY = 1 ] || current=$(remote 'cat /etc/rover/settings.toml 2>/dev/null' || true)
   new=$(printf '%s' "$current" | (cd "$ROOT" && "$PYTHON" -m rover.settings --merge "$@")) || exit 2
-  if [ $DRY = 1 ]; then echo "+ write /etc/rover/settings.toml on the Pi:"; printf '%s' "$new"; echo "+ restart rover"; return 0; fi
-  printf '%s' "$new" | remote 'sudo mkdir -p /etc/rover && sudo tee /etc/rover/settings.toml >/dev/null && sudo systemctl restart rover'
-  printf '%s' "$new"
+  if [ $DRY = 1 ]; then echo "+ write /etc/rover/settings.toml on the Pi:"; printf '%s\n' "$new"; echo "+ restart rover"; return 0; fi
+  printf '%s\n' "$new" | remote 'sudo mkdir -p /etc/rover && sudo tee /etc/rover/settings.toml >/dev/null && sudo systemctl restart rover'
+  printf '%s\n' "$new"
   sleep 2
   remote 'systemctl is-active rover; journalctl -u rover -o cat -n 30 --no-pager | grep -E "\"(settings|fault)\"" | tail -n 5' || true
 }

@@ -4,23 +4,19 @@ import subprocess
 import sys
 import time
 
-from rover.drive_input import DEFAULT_PATH, DriveInput, ModeRequest
+from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
-from rover.guard import FRESH_S, ObstacleGuard
 from rover.health import Health, ThrottleReader
-from rover.loop import TickLoop
 from rover.motors import Motors
+from rover.robot import Robot
 from rover.scanner import Scanner
 
 try:
-    from rover.modes import REGISTRY, Inputs, ModeManager, Sense
-    from rover.pad import Pad, PadState
+    from rover.pad import Pad
 except ImportError:  # python-evdev missing: run without a pad, socket input still drives
-    ModeManager = Pad = Sense = Inputs = PadState = None
-    REGISTRY = {}
+    Pad = None
 
 PERIOD_S = 0.02
-SNAPSHOT_EVERY = 5  # ticks: the status page gets 10 snapshots a second
 
 
 class RealClock:
@@ -53,148 +49,20 @@ def current_commit():
         return "unknown"
 
 
-class BenchMode:
-    """A mode the bench runs while no person drives, like `tools/bench drive` (stand only).
-
-    Any pad command (people), Back, a bench drive, `mode idle`, the mode's own request or the
-    deadline ends it."""
-
-    def __init__(self, request, events):
-        self.name, self.events = request.name, events
-        self.deadline = request.time + request.seconds
-        self.mode = REGISTRY[request.name]()
-        if hasattr(self.mode, "events"):
-            self.mode.events = events
-        self.mode.enter()
-        events.emit("bench_mode", mode=self.name, seconds=request.seconds)
-
-    def tick(self, inputs):
-        return self.mode.tick(inputs)
-
-    def finished(self, now):
-        return now >= self.deadline or bool(getattr(self.mode, "request", None))
-
-    def end(self, reason):
-        self.mode.exit()
-        self.events.emit("bench_mode", mode=None, ended=self.name, reason=reason)
-
-
-def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health, pose=None, bench=None):
-    """What the status page shows. Built in the loop's thread; published as one new dict."""
-    cmd = loop.command
-    shown = bench.mode if bench is not None else (manager.mode if manager is not None else None)
-    name = f"bench:{bench.name}" if bench is not None else (manager.name if manager is not None else None)
-    return {
-        "t": round(now, 3),
-        "commit": commit,
-        "mode": name,
-        "mode_state": getattr(shown, "state", None),
-        "latched": manager.latched if manager is not None else None,
-        "pad_lost": pad_state.lost if pad_state is not None else None,
-        "command": None if cmd is None else {
-            "left": cmd.left, "right": cmd.right, "source": cmd.source, "age": round(now - cmd.time, 3)},
-        "output": {"left": loop.output[0], "right": loop.output[1]},
-        "stale": loop.stale,
-        "guard": {"state": guard.state, "distance": guard.distance, "limit": guard.limit_value},
-        "ranges": [] if scanner is None else [
-            {"angle": r.angle, "distance": r.distance, "error": r.error, "age": round(now - r.time, 3)}
-            for r in scanner.latest.values()],
-        "health": health.last if health is not None else None,
-        "pose": pose.odo.pose() if pose is not None else None,
-    }
-
-
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
           period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None,
           scanner=None, health=None, status=None, pose=None):
-    """Run the tick loop until `ticks` ticks are done (forever if None)."""
-    guard = ObstacleGuard(scanner, events)
-    loop = TickLoop(motors, clock, guard=guard)
+    """Run the robot's tick at `period` until `ticks` ticks are done (forever if None): the timing,
+    the systemd watchdog and the overrun check. What one tick does is rover.robot.Robot."""
+    robot = Robot(motors, clock, events, drive_input, pad=pad, scanner=scanner, pose=pose,
+                  status=status, health=health, commit=commit)
     events.emit("start", commit=commit)
     notifier.notify("READY=1")
-    manager = ModeManager(events) if pad is not None else None
-    was_stale = True
-    socket_cmd = None
-    last_pad = None
-    bench = None  # a BenchMode while the bench runs a mode
-    pad_state = None
     n = 0
     try:
         while ticks is None or n < ticks:
             started = clock.now()
-            now = clock.now()
-            for item in drive_input.poll():
-                if isinstance(item, Exception):
-                    events.emit("fault", error=f"bad drive input: {item}")
-                    continue
-                if isinstance(item, ModeRequest):
-                    if bench is not None:
-                        bench.end("idle" if item.name == "idle" else "replaced")
-                        bench = None
-                    socket_cmd = None
-                    if item.name == "idle":
-                        continue
-                    if item.name not in REGISTRY or item.name == "manual":
-                        events.emit("fault", error=f"bench cannot run mode {item.name!r}")
-                        continue
-                    bench = BenchMode(item, events)
-                    continue
-                if bench is not None:
-                    bench.end("drive")
-                    bench = None
-                socket_cmd = item
-                if manager is None:
-                    loop.submit(item)
-                events.emit("drive", left=item.left, right=item.right, source=item.source)
-            sense = None
-            if scanner is not None and Sense is not None:
-                sense = Sense(ahead=scanner.ahead(now, FRESH_S), readings=tuple(scanner.latest.values()))
-            cmd = None
-            if manager is not None:
-                # a live pad mode wins; with no pad command the bench (a mode, or the socket) drives,
-                # and Back always stops both
-                pad_state = pad.poll()
-                cmd = manager.update(pad_state, now, sense)
-                if pad_state.back:
-                    socket_cmd = None
-                key = None if cmd is None else (cmd.left, cmd.right, cmd.source)
-                if key is not None and key != last_pad:
-                    events.emit("drive", left=cmd.left, right=cmd.right, source=cmd.source)
-                last_pad = key
-                if bench is not None and (pad_state.back or cmd is not None):
-                    bench.end("pad")
-                    bench = None
-            if cmd is None and bench is not None:
-                if bench.finished(now):
-                    bench.end("deadline" if now >= bench.deadline else "mode")
-                    bench = None
-                else:
-                    cmd = bench.tick(Inputs(pad_state or PadState(), now, sense or Sense()))
-            if manager is not None or bench is not None or cmd is not None:
-                loop.submit(cmd if cmd is not None else socket_cmd)
-            if scanner is not None:
-                try:
-                    active = bench.mode if bench is not None else (manager.mode if manager is not None else None)
-                    scanner.set_pattern(getattr(active, "scan", "ahead"))
-                    scanner.tick(clock.now())  # before the motors, so the guard sees this tick's echo
-                except Exception as e:  # degrade, don't crash: the guard goes blind and caps forward speed
-                    events.emit("fault", error=f"scanner failed, guard is blind: {e!r}")
-                    scanner.close()
-                    scanner = guard.scanner = None
-            loop.tick()
-            if pose is not None:
-                try:
-                    pose.tick(clock.now(), loop.output)
-                except Exception as e:  # odometry is never worth a crash
-                    events.emit("fault", error=f"odometry failed: {e!r}")
-                    pose.close()
-                    pose = None
-            if loop.stale and not was_stale:
-                events.emit("deadman_stop")
-            was_stale = loop.stale
-            if status is not None and n % SNAPSHOT_EVERY == 0:
-                status.publish(snapshot(clock.now(), commit, manager, pad_state, loop, guard, scanner, health, pose,
-                                        bench))
+            robot.tick()
             elapsed = clock.now() - started
             if elapsed > period:
                 events.emit("tick_overrun", elapsed=elapsed, period=period)
@@ -208,8 +76,7 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
         events.emit("fault", error=repr(e))
         raise
     finally:
-        if bench is not None:
-            bench.end("stop")
+        robot.close()
         motors.coast()
         events.emit("stop")
 
