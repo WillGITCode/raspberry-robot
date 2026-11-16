@@ -16,15 +16,15 @@ class FakeClock:
 
 
 class TickLoop:
-    """One tick: read the latest command, filter it, ramp it, drive or coast. Never blocks.
+    """One tick: read the latest command, filter it (deadman, then the obstacle guard), ramp it,
+    drive or coast. Never blocks. This is the only code that moves the motors."""
 
-    This is the only code that moves the motors."""
-
-    def __init__(self, motors, clock, safety=None, ramp=None):
+    def __init__(self, motors, clock, safety=None, ramp=None, guard=None):
         self.motors = motors
         self.clock = clock
         self.safety = safety or SafetyFilter()
         self.ramp = ramp or Ramp()
+        self.guard = guard
         self.command = None
         self.stale = False  # last tick coasted for lack of a fresh command
         self.output = (0.0, 0.0)  # what the motors got on the last tick
@@ -41,7 +41,10 @@ class TickLoop:
             self.output = (0.0, 0.0)
             self.motors.coast()
             return
-        self.output = self.ramp.apply(cmd.left, cmd.right, now)
+        left, right = cmd.left, cmd.right
+        if self.guard is not None:
+            left, right = self.guard.limit(left, right, now)
+        self.output = self.ramp.apply(left, right, now)
         self.motors.drive(*self.output)
 
     def run(self, ticks, period=0.02, sleep=time.sleep):
