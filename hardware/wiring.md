@@ -97,3 +97,4 @@ Do these before any wiring.
 - [ ] After a load run on the power bank (steps in `docs/robot-power.md`), run `vcgencmd get_throttled` over SSH and confirm it reports no undervoltage.
 - [ ] Note which L298N input each of BOARD 18, 11, 13 and 15 goes to.
 - [ ] Confirm the encoder pulse outputs read cleanly once wired (not before).
+- [ ] Motor noise suppression: solder a 0.1 µF ceramic capacitor across each TT motor's two terminals (the standard fix for brushed motors). If it is easy, also one from each terminal to the motor's metal can. Route the PING's three wires away from the motor wires, or twist them together. Why: in the stand test (2026-11-16), at full speed the motors' electrical noise made most PING echoes lose their start edge, while half speed read cleanly. The software now drops those pings instead of guessing (`lost_start`), so the guard slows the robot when it can't see. Fixing the noise at its source gives the robot its eyes back at full speed.

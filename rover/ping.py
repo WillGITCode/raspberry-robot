@@ -15,7 +15,6 @@ CHIP = "/dev/gpiochip0"
 GPIO = 23  # BOARD 16
 SPEED_OF_SOUND_M_S = 343.0  # at about 20 C
 TRIGGER_NS = 10_000
-HOLDOFF_NS = 750_000  # the sensor waits this long after the trigger before the echo starts (datasheet)
 HOLDOFF_MIN_NS = 500_000  # an edge before this is noise: the echo cannot have started yet
 HOLDOFF_MAX_NS = 1_500_000  # a first edge after this means the echo's start was lost
 MIN_WIDTH_S = 100e-6  # the sensor's shortest echo is 115 us (2 cm); shorter is a glitch
@@ -29,7 +28,6 @@ class Echo:
     time: float  # clock time the ping was triggered
     error: str | None = None  # why there is no reading
     flip_us: float | None = None  # trigger end to input ready (bench probe, health)
-    estimated: bool = False  # the echo's start was lost, so the datasheet hold-off stood in for it
 
 
 def width_to_distance(width_s):
@@ -42,23 +40,24 @@ def echo_from_edges(edges, trigger_ns, t, flip_us=None):
     The kernel stamps each edge's time in the interrupt (exact), but names it rising or falling by
     reading the pin a little later. With the motors running, noise spikes are over by then and come
     out as "falling", and a real edge can be lost. So the names are trusted only for the end: the
-    start is the first edge after the hold-off, whatever its name (or, if none came in time, the
-    datasheet's 750 us stands in, within about 1 cm); the end is the first falling edge at least
+    start is the first edge after the hold-off, whatever its name, and it must come by
+    HOLDOFF_MAX_NS (else "lost_start", no reading); the end is the first falling edge at least
     MIN_WIDTH_S after the start. Edges before HOLDOFF_MIN_NS are noise."""
     after = [(rising, ts) for rising, ts in edges if ts >= trigger_ns + HOLDOFF_MIN_NS]
     if not after:
         return None
-    if after[0][1] - trigger_ns <= HOLDOFF_MAX_NS:
-        start, rest, estimated = after[0][1], after[1:], False
-    else:
-        start, rest, estimated = trigger_ns + HOLDOFF_NS, after, True
-    for rising, ts in rest:
+    if after[0][1] - trigger_ns > HOLDOFF_MAX_NS:
+        # the start was lost. Assuming the datasheet's start made readings of 1-2 m with an
+        # obstacle at 26 cm (stand, full speed): too far is the unsafe error, so no reading
+        return Echo(None, t, "lost_start", flip_us)
+    start = after[0][1]
+    for rising, ts in after[1:]:
         if rising or ts - start < MIN_WIDTH_S * 1e9:
             continue  # noise inside the echo reads "rising" (the pin is still high); or too short
         width = (ts - start) / 1e9
         if width > MAX_WIDTH_S:
             return Echo(None, t, "too_long", flip_us)
-        return Echo(width_to_distance(width), t, None, flip_us, estimated)
+        return Echo(width_to_distance(width), t, None, flip_us)
     return None
 
 
