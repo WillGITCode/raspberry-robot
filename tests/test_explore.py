@@ -301,7 +301,7 @@ def test_blocked_right_after_a_turn_backs_off_and_three_in_a_row_give_up():
     assert states.count("back") == 2 and states[-1] == "stuck"
 
 
-def test_the_servo_rests_during_every_ping():
+def test_the_servo_holds_actively_during_every_ping():
     from rover.loop import FakeClock
     from rover.ping import FakePing
 
@@ -310,15 +310,15 @@ def test_the_servo_rests_during_every_ping():
     class WatchedServo(FakeServo):
         def __init__(self):
             super().__init__()
-            self.pulsing_pings = 0
+            self.resting_pings = 0
 
     servo = WatchedServo()
     ping = FakePing(clock, distance=1.0)
     real_trigger = ping.trigger
 
     def trigger():
-        if not servo.relaxed:
-            servo.pulsing_pings += 1
+        if servo.relaxed:
+            servo.resting_pings += 1
         return real_trigger()
 
     ping.trigger = trigger
@@ -326,4 +326,4 @@ def test_the_servo_rests_during_every_ping():
     for _ in range(300):
         s.tick(clock.now())
         clock.advance(0.02)
-    assert ping.triggers > 10 and servo.pulsing_pings == 0
+    assert ping.triggers > 10 and servo.resting_pings == 0
