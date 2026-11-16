@@ -60,3 +60,31 @@ def test_removed_device_zeroes_and_lost():
     dev.gone = True
     s = pad.poll()
     assert s.lost and s.ly == 0.0
+
+
+def test_search_runs_at_most_once_a_second():
+    t, calls = [0.0], []
+
+    def finder():
+        calls.append(t[0])
+        return None
+
+    pad = Pad(finder, clock=lambda: t[0])
+    for i in range(60):  # 1.2 s of 50 Hz ticks
+        t[0] = i * 0.02
+        assert pad.poll().lost
+    assert len(calls) == 2 and calls[0] == 0.0 and calls[1] >= 1.0
+
+
+def test_failed_device_is_closed_and_found_again():
+    t = [0.0]
+    devs = [FakeDev(), FakeDev()]
+    closed = []
+    devs[0].close = lambda: closed.append(0)
+    found = iter(devs)
+    pad = Pad(lambda: next(found), clock=lambda: t[0])
+    assert not pad.poll().lost
+    devs[0].gone = True
+    assert pad.poll().lost and closed == [0]
+    t[0] = 1.5
+    assert not pad.poll().lost  # the next search finds the second device

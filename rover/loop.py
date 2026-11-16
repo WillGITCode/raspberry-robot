@@ -1,5 +1,6 @@
 import time
 
+from rover.ramp import Ramp
 from rover.safety import SafetyFilter
 
 
@@ -15,25 +16,33 @@ class FakeClock:
 
 
 class TickLoop:
-    """One tick: read the latest command, filter it, drive or coast. Never blocks."""
+    """One tick: read the latest command, filter it, ramp it, drive or coast. Never blocks.
 
-    def __init__(self, motors, clock, safety=None):
+    This is the only code that moves the motors."""
+
+    def __init__(self, motors, clock, safety=None, ramp=None):
         self.motors = motors
         self.clock = clock
         self.safety = safety or SafetyFilter()
+        self.ramp = ramp or Ramp()
         self.command = None
         self.stale = False  # last tick coasted for lack of a fresh command
+        self.output = (0.0, 0.0)  # what the motors got on the last tick
 
     def submit(self, command):
         self.command = command
 
     def tick(self):
-        cmd = self.safety.apply(self.command, self.clock.now())
+        now = self.clock.now()
+        cmd = self.safety.apply(self.command, now)
         self.stale = cmd is None
         if cmd is None:
+            self.ramp.reset()
+            self.output = (0.0, 0.0)
             self.motors.coast()
-        else:
-            self.motors.drive(cmd.left, cmd.right)
+            return
+        self.output = self.ramp.apply(cmd.left, cmd.right, now)
+        self.motors.drive(*self.output)
 
     def run(self, ticks, period=0.02, sleep=time.sleep):
         for _ in range(ticks):
