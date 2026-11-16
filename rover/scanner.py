@@ -54,7 +54,6 @@ class Scanner:
         self._last_trigger = float("-inf")
         self._trigger_angle = None
         self._pings, self._errors, self._flips = 0, {}, []
-        self._estimated = 0
         self._ahead_cm = []
         self._retried = False
 
@@ -96,8 +95,6 @@ class Scanner:
             self._pings += 1
             if r.error:
                 self._errors[r.error] = self._errors.get(r.error, 0) + 1
-            if getattr(echo, "estimated", False):
-                self._estimated += 1
             if r.distance is not None and r.angle == AHEAD:
                 self._ahead_cm.append(r.distance * 100)
             if self.pattern in STEPS:
@@ -136,11 +133,11 @@ class Scanner:
         health event. A slow flip (over the sensor's 750 us hold-off) is what makes a missed_rise."""
         flips = sorted(self._flips)
         ahead = sorted(self._ahead_cm)
-        stats = {"pings": self._pings, "ping_errors": self._errors, "ping_estimated": self._estimated,
+        stats = {"pings": self._pings, "ping_errors": self._errors,
                  "flip_us_p50": round(flips[len(flips) // 2]) if flips else None,
                  "flip_us_max": round(flips[-1]) if flips else None,
                  "ahead_cm": [round(ahead[0], 1), round(ahead[len(ahead) // 2], 1), round(ahead[-1], 1)] if ahead else None}
-        self._pings, self._errors, self._flips, self._estimated, self._ahead_cm = 0, {}, [], 0, []
+        self._pings, self._errors, self._flips, self._ahead_cm = 0, {}, [], []
         return stats
 
     def close(self):
