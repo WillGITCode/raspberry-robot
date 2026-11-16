@@ -24,6 +24,7 @@ SIDE_M = 0.40  # a fan reading 30 degrees off ahead closer than this: veer away 
 VEER = 0.5  # the inner side's share of the cruise speed while veering
 SIDE_FRESH_S = 1.0
 SETTLE_S = 0.3  # readings older than this, after a state change, are ignored for the decision
+OPEN_FOR_S = 0.3  # the turn ends once ahead has stayed open this long (an obstacle may come and go)
 LOOK_TIMEOUT_S = 3.5  # a full 10-170 pass takes about 1.5 s
 TURN_TIMEOUT_S = 4.0
 MAX_TURNS = 3
@@ -83,6 +84,7 @@ class ExploreMode:
         self.request = None  # set to "idle" to ask the manager to leave this mode
         self.events = None  # given by the mode manager
         self._mark = None  # (time, distance) where the stuck check started
+        self._open_since = None
 
     def enter(self):
         self.state = None
@@ -92,7 +94,7 @@ class ExploreMode:
 
     def _go(self, state, now, **why):
         self.state, self.since = state, now
-        self._mark = None
+        self._mark = self._open_since = None
         self.scan = {"look": "sweep", "cruise": "fan"}.get(state, "ahead")
         if self.events is not None:
             self.events.emit("explore", state=state, **why)
@@ -141,9 +143,14 @@ class ExploreMode:
         if self.state == "turn":
             fresh = ahead is not None and ahead.time >= self.since + SETTLE_S
             if fresh and ahead.distance >= OPEN_M:
-                self.turns = 0
-                self._go("cruise", now)
-                return self._stop(now)
+                if self._open_since is None:
+                    self._open_since = now
+                if now - self._open_since >= OPEN_FOR_S:
+                    self.turns = 0
+                    self._go("cruise", now)
+                    return self._stop(now)
+            else:
+                self._open_since = None
             if now - self.since > TURN_TIMEOUT_S:
                 self.turns += 1
                 if self.turns >= MAX_TURNS:

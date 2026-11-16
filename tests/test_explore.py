@@ -202,7 +202,7 @@ def test_bench_cannot_run_manual_and_mode_idle_ends_it(motors):
     events, _ = _bench_run(motors, {0: REST}, {5: [("manual", 5.0)], 10: [("explore", 5.0)],
                                                40: [("idle", 1.0)]}, ticks=60)
     assert any(e["event"] == "fault" and "manual" in e["error"] for e in events)
-    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "replaced"
+    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "idle"
 
 
 def test_mode_request_parsing():
@@ -221,3 +221,18 @@ def test_mode_request_parsing():
     di.close()
     assert got[0] == ModeRequest("explore", 20.0, "bench", 0.0) and got[1].seconds == 10.0
     assert isinstance(got[2], ValueError) and got[3].left == 0.2
+
+
+def test_turn_ends_only_once_ahead_stays_open():
+    mode = ExploreMode()
+    mode.state, mode.since, mode.turn_dir = "turn", 0.0, 1
+    open_r = lambda t: Reading(95.0, 1.0, t)  # noqa: E731
+    near_r = lambda t: Reading(95.0, 0.3, t)  # noqa: E731
+    seq = [open_r, open_r, near_r] * 10 + [open_r] * 30  # open, but an obstacle keeps flicking back
+    t = 0.4
+    for i, r in enumerate(seq):
+        mode.tick(Inputs(REST, t, Sense(ahead=r(t))))
+        if i < 30:
+            assert mode.state == "turn"  # never 0.3 s of open in the flicker
+        t += 0.02
+    assert mode.state == "cruise"
