@@ -42,17 +42,22 @@ def test_motor_noise_in_the_hold_off_is_ignored():
     assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(2900e-6))
 
 
-def test_a_start_named_falling_still_counts_as_the_start():
-    # the kernel read the pin after a spike, so the echo's start came out "falling"
-    edges = [(False, T0 + us(760)), (True, T0 + us(1500)), (False, T0 + us(760) + us(2900))]
-    e = echo_from_edges(edges, T0, 0.0)
-    assert e.distance == pytest.approx(width_to_distance(2900e-6)) and e.error is None
+def test_the_start_must_be_a_rise_inside_the_hold_off_window():
+    # bench, full speed: noise spikes read "falling"; one at 711 us must not pass as the start
+    edges = [(False, T0 + us(385)), (False, T0 + us(711)), (True, T0 + us(752)), (False, T0 + us(2270))]
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(1518e-6))
+    late = [(True, T0 + us(1200)), (False, T0 + us(3000))]  # a rise outside the window: noise
+    assert echo_from_edges(late, T0, 0.0).error == "lost_start"
 
 
 def test_a_lost_start_is_no_reading_never_a_guess():
     # only a late edge arrived: guessing the start read 1-2 m with an obstacle at 26 cm
     e = echo_from_edges([(False, T0 + us(750) + us(2900))], T0, 0.0)
     assert e.distance is None and e.error == "lost_start"
+
+
+def test_still_waiting_while_the_start_may_come():
+    assert echo_from_edges([(False, T0 + us(300))], T0, 0.0) is None
 
 
 def test_edges_before_the_trigger_are_ignored():

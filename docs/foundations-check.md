@@ -4,7 +4,7 @@ What changed since the first floor run, and a short check for each. Agents check
 
 **What is new**
 
-- **Car steering, left stick:** push it sideways and the robot arcs forward. At full deflection the outer side runs full and the inner side half. Pulled back, the robot reverses and arcs the way a car backs. The right stick still spins in place. The cap is 0.6 since the floor runs (it was 0.3 for the first ones); the right trigger still boosts to 1.0. Steering is sharper since then: the inner side drops to 30%.
+- **Car steering, left stick:** push it sideways and the robot arcs forward. At full deflection the outer side runs full and the inner side half. Pulled back, the robot reverses and arcs the way a car backs. The right stick still spins in place. The cap is 0.6 since the floor runs (it was 0.3 for the first ones); the right trigger still boosts to 1.0. Until the motor noise capacitors are fitted (`hardware/wiring.md`), keep the boost away from obstacles: at full speed the motors' noise blinds the ping part of the time. Steering is sharper since then: the inner side drops to 30%.
 - **Soft starts:** speeding up takes about 0.25 s from 0 to full. Slowing and stopping are immediate.
 - **Obstacle guard:** the ping looks ahead 25 times a second. Forward speed drops from 60 cm and reaches zero at 20 cm. Reverse and spinning always work, so you can back off or turn away. With no reading, forward speed stays at 0.3 and boost is off.
 - **Status page:** open `http://<the Pi's address>:8080/` on the desktop or your phone. It shows the mode, the command, the guard, a radar of the ping, CPU temperature and power flags.

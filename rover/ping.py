@@ -16,8 +16,8 @@ CHIP = "/dev/gpiochip0"
 GPIO = 23  # BOARD 16
 SPEED_OF_SOUND_M_S = 343.0  # at about 20 C
 TRIGGER_NS = 10_000
-HOLDOFF_MIN_NS = 500_000  # an edge before this is noise: the echo cannot have started yet
-HOLDOFF_MAX_NS = 1_500_000  # a first edge after this means the echo's start was lost
+START_MIN_NS = 650_000  # the echo starts this long after the trigger: 752-759 us in 937 bench pings
+START_MAX_NS = 900_000  # (datasheet hold-off 750 us); a start outside this window is noise
 MIN_WIDTH_S = 100e-6  # the sensor's shortest echo is 115 us (2 cm); shorter is a glitch
 MAX_WIDTH_S = 19e-3  # its longest is 18.5 ms: nothing within about 3 m
 ECHO_TIMEOUT_S = 0.03
@@ -38,22 +38,20 @@ def width_to_distance(width_s):
 def echo_from_edges(edges, trigger_ns, t, flip_us=None):
     """edges: [(rising, timestamp_ns)] in order. An Echo, or None while the echo is still due.
 
-    The kernel stamps each edge's time in the interrupt (exact), but names it rising or falling by
-    reading the pin a little later. With the motors running, noise spikes are over by then and come
-    out as "falling", and a real edge can be lost. So the names are trusted only for the end: the
-    start is the first edge after the hold-off, whatever its name, and it must come by
-    HOLDOFF_MAX_NS (else "lost_start", no reading); the end is the first falling edge at least
-    MIN_WIDTH_S after the start. Edges before HOLDOFF_MIN_NS are noise."""
-    after = [(rising, ts) for rising, ts in edges if ts >= trigger_ns + HOLDOFF_MIN_NS]
-    if not after:
-        return None
-    if after[0][1] - trigger_ns > HOLDOFF_MAX_NS:
-        # the start was lost. Assuming the datasheet's start made readings of 1-2 m with an
-        # obstacle at 26 cm (stand, full speed): too far is the unsafe error, so no reading
-        return Echo(None, t, "lost_start", flip_us)
-    start = after[0][1]
-    for rising, ts in after[1:]:
-        if rising or ts - start < MIN_WIDTH_S * 1e9:
+    The kernel stamps each edge's time in the interrupt (exact) and names it by reading the pin a
+    little later. With the motors at full speed, noise adds many short spikes; they come out
+    "falling" (the pin is low again by the time it is read), scattered from 0.2 ms to 19 ms. The
+    real echo always starts with a rising edge 752-759 us after the trigger (937 bench pings). So the
+    start is the first rising edge in START_MIN_NS..START_MAX_NS (none: "lost_start", no reading,
+    never a guess), and the end is the first falling edge at least MIN_WIDTH_S after it."""
+    start = next((ts for rising, ts in edges
+                  if rising and trigger_ns + START_MIN_NS <= ts <= trigger_ns + START_MAX_NS), None)
+    if start is None:
+        if edges and edges[-1][1] > trigger_ns + START_MAX_NS:
+            return Echo(None, t, "lost_start", flip_us)
+        return None  # the start may still come
+    for rising, ts in edges:
+        if ts <= start or rising or ts - start < MIN_WIDTH_S * 1e9:
             continue  # noise inside the echo reads "rising" (the pin is still high); or too short
         width = (ts - start) / 1e9
         if width > MAX_WIDTH_S:
