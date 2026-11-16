@@ -1,6 +1,7 @@
 """Pan-and-ping scanner: owns the servo and the ping, one call per tick, never blocks.
 
-Patterns: "ahead" holds the servo at 95 degrees and pings every AHEAD_PERIOD_S. "sweep" steps
+Patterns: "ahead" holds the servo at 95 degrees and pings every AHEAD_PERIOD_S. The servo's pulses
+stop before each ping (it has settled by then) and start again with the next move. "sweep" steps
 10 -> 170 -> 10 by SWEEP_STEP, waits for the move to settle (at least SWEEP_DWELL_S) and pings
 once per step. "fan" steps ahead, 30 left, ahead, 30 right (about 0.7 s a round): it catches walls
 met at a shallow angle, which never echo straight back, and still reads ahead every other ping. Every reading keeps the angle it was taken at. The old code's comments put 10
@@ -14,7 +15,6 @@ from rover.servo import AHEAD, MAX_ANGLE, MIN_ANGLE, move_time
 AHEAD_PERIOD_S = 0.04  # 25 Hz: an echo takes at most about 19 ms
 SWEEP_STEP = 20.0
 SWEEP_DWELL_S = 0.12
-RELAX_AFTER_S = 0.5  # ahead: stop the servo pulses once it has held still this long
 NEAR_S = 0.2  # ahead() takes the nearest valid echo of the last NEAR_S: a closer echo wins at once
 HISTORY_S = 1.0  # valid readings kept for ahead()
 
@@ -94,12 +94,14 @@ class Scanner:
             return out
         if self._ready_at is not None and now < self._ready_at:
             return out
-        if self.pattern == "ahead":
-            if not self._relaxed and self._ready_at is not None and now - self._ready_at >= RELAX_AFTER_S:
-                self.servo.relax()
-                self._relaxed = True
-            if now - self._last_trigger < AHEAD_PERIOD_S:
-                return out
+        if self.pattern == "ahead" and now - self._last_trigger < AHEAD_PERIOD_S:
+            return out
+        if not self._relaxed:
+            # pulses off before every ping: the servo has settled and holds by friction, and its pulse
+            # train (lgpio, on the same GPIO chip) seemed to delay the ping's flip to input
+            # (missed_rise while sweeping, none while still)
+            self.servo.relax()
+            self._relaxed = True
         if self.ping.trigger():
             self._last_trigger, self._trigger_angle = now, target
         return out

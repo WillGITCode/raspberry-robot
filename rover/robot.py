@@ -16,6 +16,7 @@ except ImportError:  # python-evdev missing
     ModeManager = Sense = None
 
 SNAPSHOT_EVERY = 5  # ticks: the status page gets 10 snapshots a second
+RECENT_S = 1.0  # modes count as blind only after this long with no valid reading ahead
 
 
 class Robot:
@@ -50,7 +51,8 @@ class Robot:
     def sense(self, now):
         if self.scanner is None or Sense is None:
             return None
-        return Sense(ahead=self.scanner.ahead(now, FRESH_S), readings=tuple(self.scanner.latest.values()))
+        return Sense(ahead=self.scanner.ahead(now, FRESH_S), readings=tuple(self.scanner.latest.values()),
+                     ahead_recent=self.scanner.ahead(now, RECENT_S))
 
     def _scan(self):
         if self.scanner is None:

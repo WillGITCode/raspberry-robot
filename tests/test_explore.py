@@ -244,3 +244,86 @@ def test_simrun_headless_explores_a_furnished_room_without_a_bump(capsys):
     assert main(["--headless", "--minutes", "1", "--furniture", "--seed", "2"]) == 0
     metrics = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert metrics["bumps"] == 0 and metrics["faults"] == 0 and metrics["path_m"] > 5
+
+
+def test_choose_side_prefers_a_wide_gap_to_one_far_reading():
+    r = lambda a, d: Reading(a, d, 0.0)  # noqa: E731
+    # 10 deg (left) reads "far" alone (an angled surface sending the echo away); the right has a
+    # real gap: 110 to 170 all open
+    sweep = [r(10, 3.17), r(30, 0.3), r(50, 0.3), r(70, 0.35), r(90, 0.4),
+             r(110, 1.2), r(130, 1.5), r(150, 1.1), r(170, 0.9)]
+    assert choose_side(sweep) == -1
+    assert choose_side([r(10, 0.3), r(90, 0.4), r(170, 0.5)]) == -1  # nothing open: the most room
+
+
+def test_a_close_side_reading_makes_it_look():
+    mode = ExploreMode()
+    far = Reading(95.0, 1.5, 0.0)
+    mode.tick(Inputs(REST, 0.0, Sense(ahead=far)))
+    assert mode.state == "cruise"
+    leg = Reading(65.0, 0.2, 0.0)  # 30 degrees left, 20 cm: a chair leg coming in at an angle
+    mode.tick(Inputs(REST, 0.02, Sense(ahead=far, readings=(leg,))))
+    assert mode.state == "look"
+
+
+def test_a_missed_ping_is_not_blindness():
+    mode = ExploreMode()
+    recent = Reading(95.0, 1.5, 0.0)
+    for i in range(30):
+        cmd = mode.tick(Inputs(REST, i * 0.02, Sense(ahead=None, ahead_recent=recent)))
+    assert mode.state == "cruise" and cmd.left > 0
+
+
+def test_blocked_right_after_a_turn_backs_off_and_three_in_a_row_give_up():
+    log = Log()
+    mode = ExploreMode()
+    mode.events = log
+    t = 0.0
+
+    def tick(ahead_m, readings=()):
+        nonlocal t
+        cmd = mode.tick(Inputs(REST, t, Sense(ahead=Reading(95.0, ahead_m, t), readings=readings)))
+        t += 0.02
+        return cmd
+
+    sweep = tuple(Reading(a, 1.5, 0.0) for a in range(10, 171, 20))
+    for _ in range(3):
+        mode.state, mode.since, mode.turn_dir = "turn", t, 1
+        while mode.state == "turn":
+            tick(1.5)  # ahead reads open: the turn ends
+        assert mode.state == "cruise" and mode._after_turn
+        tick(0.25)  # ...and at once it is blocked again: that "open" was false
+        if mode.request:
+            break
+        assert mode.state == "back"
+    assert mode.request == "idle"
+    states = [f.get("state") for e, f in log.items if e == "explore"]
+    assert states.count("back") == 2 and states[-1] == "stuck"
+
+
+def test_the_servo_rests_during_every_ping():
+    from rover.loop import FakeClock
+    from rover.ping import FakePing
+
+    clock = FakeClock()
+
+    class WatchedServo(FakeServo):
+        def __init__(self):
+            super().__init__()
+            self.pulsing_pings = 0
+
+    servo = WatchedServo()
+    ping = FakePing(clock, distance=1.0)
+    real_trigger = ping.trigger
+
+    def trigger():
+        if not servo.relaxed:
+            servo.pulsing_pings += 1
+        return real_trigger()
+
+    ping.trigger = trigger
+    s = Scanner(ping, servo, pattern="sweep")
+    for _ in range(300):
+        s.tick(clock.now())
+        clock.advance(0.02)
+    assert ping.triggers > 10 and servo.pulsing_pings == 0
