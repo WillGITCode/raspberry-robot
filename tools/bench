@@ -14,6 +14,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   deploy                          pytest, lock, push HEAD, wait for rover.service, print the commit
   logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
   status                          service state, deployed commit, who deployed
+  timeline [--since 15m]          what the robot did, one row each: modes, explore, guard, faults, power
   stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then "0 0" (the service keeps running)
   mode <name> <seconds>           run a mode (explore) for the bench while the pad is idle; the service ends it (stand only)
@@ -78,6 +79,20 @@ cmd_logs() {
   else
     remote journalctl --since "-$since" -o cat --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-deploy
   fi
+}
+
+# timeline: the journal as JSON, folded on this machine by tools/timeline.py
+cmd_timeline() {
+  since=15m
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --since) since=$2; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  [[ "$since" =~ ^[0-9]+[smhd]$ ]] || usage
+  remote journalctl --since "-$since" -o json --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-deploy \
+    | python3 "$ROOT/tools/timeline.py"
 }
 
 cmd_status() {
@@ -415,7 +430,7 @@ cmd_loop_check() {
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
-  deploy|logs|status|stop|drive|mode|snap|clip) "cmd_$c" "$@" ;;
+  deploy|logs|status|stop|drive|mode|snap|clip|timeline) "cmd_$c" "$@" ;;
   pad-check) cmd_pad_check "$@" ;;
   ping-check) cmd_ping_check "$@" ;;
   servo-check) cmd_servo_check "$@" ;;

@@ -49,6 +49,7 @@ One mode at a time, in `rover/modes.py`; a mode returns a drive command and neve
 `tools/bench` works on the Pi through the ssh alias `rover-bench` (set in `~/.ssh/config`; the repo holds no host or key).
 
 - `tools/bench deploy` runs pytest, takes `.bench/deploy.lock` (one deploy at a time), pushes `HEAD` to the Pi's bare repo (`refs/heads/main`, which the `post-receive` hook deploys), waits until `rover.service` is active on that commit, and prints it.
+- `tools/bench timeline [--since 15m]` turns the journal into one row per thing the robot did, with wall-clock times: mode changes, explore steps, bench modes, guard states, deadman stops, faults, starts, stops and deploys. Runs of one drive command fold into a row; health shows only when something is off (power flags, ping errors, slow ticks), with a summary at the end. Use it right after a floor test.
 - `tools/bench status` prints the service state, the last `start` event (with the deployed commit) and the last deploy record.
 - `tools/bench logs [--since 2m] [--follow-for 10s]` prints the service's JSON event lines and deploy records; `--follow-for` streams for that long and stops.
 - `tools/bench stop` stops `rover.service` (its `ExecStopPost` runs `rover-stop` once the pins are free), then runs `rover-stop` again for the case where the service was not running: every motor pin low either way. `rover-stop` alone fails "GPIO busy" while the service runs. The service stays stopped until the next deploy.
