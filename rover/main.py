@@ -6,17 +6,17 @@ import time
 
 from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
-from rover.guard import ObstacleGuard
+from rover.guard import FRESH_S, ObstacleGuard
 from rover.health import Health, ThrottleReader
 from rover.loop import TickLoop
 from rover.motors import Motors
 from rover.scanner import Scanner
 
 try:
-    from rover.modes import ModeManager
+    from rover.modes import ModeManager, Sense
     from rover.pad import Pad
 except ImportError:  # python-evdev missing: run without a pad, socket input still drives
-    ModeManager = Pad = None
+    ModeManager = Pad = Sense = None
 
 PERIOD_S = 0.02
 SNAPSHOT_EVERY = 5  # ticks: the status page gets 10 snapshots a second
@@ -102,7 +102,11 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
             if manager is not None:
                 # a live pad mode wins; with no pad command the socket drives, except Back always stops
                 pad_state = pad.poll()
-                cmd = manager.update(pad_state, clock.now())
+                sense = None
+                if scanner is not None:
+                    sense = Sense(ahead=scanner.ahead(clock.now(), FRESH_S),
+                                  readings=tuple(scanner.latest.values()))
+                cmd = manager.update(pad_state, clock.now(), sense)
                 if pad_state.back:
                     socket_cmd = None
                 key = None if cmd is None else (cmd.left, cmd.right, cmd.source)

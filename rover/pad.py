@@ -20,6 +20,7 @@ class PadState:
     trigger: float = 0.0  # right trigger, 0..1
     back: bool = False
     start: bool = False
+    y: bool = False  # the yellow top button (xpad reports BTN_Y); check with tools/bench pad-check
     lost: bool = False
 
 
@@ -82,6 +83,7 @@ class Pad:
             trigger=max(0.0, min(1.0, raw(ecodes.ABS_RZ, 0) / TRIGGER_MAX)),
             back=self._buttons.get(ecodes.BTN_SELECT, False),
             start=self._buttons.get(ecodes.BTN_START, False),
+            y=self._buttons.get(ecodes.BTN_Y, False),
         )
 
     def _drop(self):

@@ -2,7 +2,8 @@
 
 Patterns: "ahead" holds the servo at 95 degrees and pings every AHEAD_PERIOD_S. "sweep" steps
 10 -> 170 -> 10 by SWEEP_STEP, waits for the move to settle (at least SWEEP_DWELL_S) and pings
-once per step. Every reading keeps the angle it was taken at. The old code's comments put 10
+once per step. "fan" steps ahead, 30 left, ahead, 30 right (about 0.7 s a round): it catches walls
+met at a shallow angle, which never echo straight back, and still reads ahead every other ping. Every reading keeps the angle it was taken at. The old code's comments put 10
 on the left and 170 on the right.
 """
 from collections import deque
@@ -36,6 +37,8 @@ def sweep_angles(step=SWEEP_STEP):
 
 
 SWEEP = sweep_angles()
+FAN = [AHEAD, AHEAD - 30.0, AHEAD, AHEAD + 30.0]
+STEPS = {"sweep": SWEEP, "fan": FAN}
 
 
 class Scanner:
@@ -52,13 +55,16 @@ class Scanner:
         self._pings, self._errors = 0, {}
 
     def set_pattern(self, name):
-        if name not in ("ahead", "sweep"):
+        if name not in ("ahead", "sweep", "fan"):
             raise ValueError(f"unknown scan pattern: {name}")
         if name != self.pattern:
             self.pattern, self._i = name, 0
 
     def target(self):
-        return AHEAD if self.pattern == "ahead" else SWEEP[self._i % len(SWEEP)]
+        if self.pattern == "ahead":
+            return AHEAD
+        steps = STEPS[self.pattern]
+        return steps[self._i % len(steps)]
 
     def tick(self, now):
         """Collect a finished echo, move the servo or start a ping. Returns this tick's new readings."""
@@ -75,14 +81,14 @@ class Scanner:
             self._pings += 1
             if r.error:
                 self._errors[r.error] = self._errors.get(r.error, 0) + 1
-            if self.pattern == "sweep":
-                self._i = (self._i + 1) % len(SWEEP)
+            if self.pattern in STEPS:
+                self._i = (self._i + 1) % len(STEPS[self.pattern])
         if self.ping.busy:
             return out  # never move the sensor during its echo
         target = self.target()
         if self.servo.angle != target:
             wait = move_time(self.servo.angle, target)
-            self._ready_at = now + (max(wait, SWEEP_DWELL_S) if self.pattern == "sweep" else wait)
+            self._ready_at = now + (max(wait, SWEEP_DWELL_S) if self.pattern in STEPS else wait)
             self.servo.move(target)
             self._relaxed = False
             return out

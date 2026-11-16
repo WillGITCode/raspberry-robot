@@ -21,8 +21,16 @@ Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default 
 
 - `rover/ping.py`: the Parallax PING))) on BOARD 16 (GPIO 23), one pin for trigger and echo, read with gpiod 2 edge events on kernel timestamps. One tick triggers; later ticks collect the echo without waiting. No echo within 30 ms, a missed rise or a pulse out of range gives a reading with `distance=None` and an `error`, never "clear". It never triggers while the pin is high. Bench: the pin flips from trigger to input in about 150 us (max 370 us seen), well inside the sensor's 750 us hold-off.
 - `rover/servo.py`: the pan servo on BOARD 5 (GPIO 3), driven by lgpio `tx_servo` with microsecond pulses: `400 + angle * 100/9` us (the old code's formula), 10 to 170 degrees, ahead at 95. The old code's comments put 10 on the left.
-- `rover/scanner.py`: owns both. Pattern `ahead` holds 95 degrees and pings at 25 Hz, relaxing the servo once still; `sweep` steps 10 -> 170 -> 10 by 20 degrees (about 3 s a round). Each reading keeps its angle and time. A mode picks the pattern with a `scan` attribute (default `ahead`).
+- `rover/scanner.py`: owns both. Pattern `ahead` holds 95 degrees and pings at 25 Hz, relaxing the servo once still; `sweep` steps 10 -> 170 -> 10 by 20 degrees (about 3 s a round); `fan` steps 95, 65, 95, 125 (about 0.7 s a round) to catch walls met at a shallow angle. Each reading keeps its angle and time. A mode picks the pattern with a `scan` attribute (default `ahead`).
 - `rover/guard.py`: limits forward speed (the mean of the two sides) by the nearest valid reading within 20 degrees of ahead over the last 0.2 s (the cone often sees two surfaces; the closer wins, and a failed ping never hides the valid ones before it): zero at about 24 cm or less (a limit under 0.1 snaps to zero), full from 60 cm. `obstacle_limit` is logged once a new state holds 0.15 s ("stop" at once). Turning and reverse are never limited, so the robot can back off or spin away. With no valid reading in the last 0.5 s, forward speed is capped at 0.3 (no boost), and a close reading from the last 2 s still counts. If the sensors cannot start, the service runs on with a `fault` event and the guard stays blind (capped).
+
+## Modes
+
+One mode at a time, in `rover/modes.py`; a mode returns a drive command and never touches hardware. It reads the pad and `Sense` (the guard's reading ahead and the newest reading at each angle), and picks the scanner's pattern with its `scan` attribute.
+
+- `idle`: no motion. The start state, and where Back or a lost pad lands (latched: only Start re-arms).
+- `manual`: the pad drives (see Pad). Start switches here from any mode.
+- `explore` (`rover/explore.py`): press Y (once armed). It cruises at 0.3 with the sensor fanning 30 degrees either side, veering away from a side closer than 40 cm; with something within 40 cm ahead it stops, sweeps 10-170, and spins toward the side with the most room until ahead is open (70 cm), then cruises on. With no valid reading it stands still; blind for 5 s, or three failed turns in a row, it gives up to `idle`. Moving a stick takes manual control at once (people beat the robot); Back stops it. Its steps are logged as `explore` events. In the sim it explores rooms of 2-6 m for minutes without coming within 21 cm of a wall. It drives as source `robot`, and the obstacle guard still limits every command.
 
 ## Odometry (ready, not wired)
 
