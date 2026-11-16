@@ -15,6 +15,9 @@ CHIP = "/dev/gpiochip0"
 GPIO = 23  # BOARD 16
 SPEED_OF_SOUND_M_S = 343.0  # at about 20 C
 TRIGGER_NS = 10_000
+HOLDOFF_NS = 750_000  # the sensor waits this long after the trigger before the echo starts (datasheet)
+HOLDOFF_MIN_NS = 500_000  # an edge before this is noise: the echo cannot have started yet
+HOLDOFF_MAX_NS = 1_500_000  # a first edge after this means the echo's start was lost
 MIN_WIDTH_S = 100e-6  # the sensor's shortest echo is 115 us (2 cm); shorter is a glitch
 MAX_WIDTH_S = 19e-3  # its longest is 18.5 ms: nothing within about 3 m
 ECHO_TIMEOUT_S = 0.03
@@ -25,7 +28,8 @@ class Echo:
     distance: float | None  # metres to the nearest echo; None when there is no reading
     time: float  # clock time the ping was triggered
     error: str | None = None  # why there is no reading
-    flip_us: float | None = None  # trigger end to input ready (bench probe)
+    flip_us: float | None = None  # trigger end to input ready (bench probe, health)
+    estimated: bool = False  # the echo's start was lost, so the datasheet hold-off stood in for it
 
 
 def width_to_distance(width_s):
@@ -33,22 +37,28 @@ def width_to_distance(width_s):
 
 
 def echo_from_edges(edges, trigger_ns, t, flip_us=None):
-    """edges: [(rising, timestamp_ns)] in order. An Echo, or None while the echo is still due."""
-    rise = None
-    for rising, ts in edges:
-        if ts < trigger_ns:
-            continue
-        if rising:
-            rise = rise if rise is not None else ts
-            continue
-        if rise is None:
-            return Echo(None, t, "missed_rise", flip_us)  # the echo began before the pin was an input
-        width = (ts - rise) / 1e9
-        if width < MIN_WIDTH_S:
-            return Echo(None, t, "glitch", flip_us)
+    """edges: [(rising, timestamp_ns)] in order. An Echo, or None while the echo is still due.
+
+    The kernel stamps each edge's time in the interrupt (exact), but names it rising or falling by
+    reading the pin a little later. With the motors running, noise spikes are over by then and come
+    out as "falling", and a real edge can be lost. So the names are trusted only for the end: the
+    start is the first edge after the hold-off, whatever its name (or, if none came in time, the
+    datasheet's 750 us stands in, within about 1 cm); the end is the first falling edge at least
+    MIN_WIDTH_S after the start. Edges before HOLDOFF_MIN_NS are noise."""
+    after = [(rising, ts) for rising, ts in edges if ts >= trigger_ns + HOLDOFF_MIN_NS]
+    if not after:
+        return None
+    if after[0][1] - trigger_ns <= HOLDOFF_MAX_NS:
+        start, rest, estimated = after[0][1], after[1:], False
+    else:
+        start, rest, estimated = trigger_ns + HOLDOFF_NS, after, True
+    for rising, ts in rest:
+        if rising or ts - start < MIN_WIDTH_S * 1e9:
+            continue  # noise inside the echo reads "rising" (the pin is still high); or too short
+        width = (ts - start) / 1e9
         if width > MAX_WIDTH_S:
             return Echo(None, t, "too_long", flip_us)
-        return Echo(width_to_distance(width), t, None, flip_us)
+        return Echo(width_to_distance(width), t, None, flip_us, estimated)
     return None
 
 
