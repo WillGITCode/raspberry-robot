@@ -52,7 +52,7 @@ def current_commit():
         return "unknown"
 
 
-def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health):
+def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health, pose=None):
     """What the status page shows. Built in the loop's thread; published as one new dict."""
     cmd = loop.command
     return {
@@ -70,12 +70,13 @@ def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health):
             {"angle": r.angle, "distance": r.distance, "error": r.error, "age": round(now - r.time, 3)}
             for r in scanner.latest.values()],
         "health": health.last if health is not None else None,
+        "pose": pose.odo.pose() if pose is not None else None,
     }
 
 
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
           period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None,
-          scanner=None, health=None, status=None):
+          scanner=None, health=None, status=None, pose=None):
     """Run the tick loop until `ticks` ticks are done (forever if None)."""
     guard = ObstacleGuard(scanner, events)
     loop = TickLoop(motors, clock, guard=guard)
@@ -118,11 +119,18 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                     scanner.close()
                     scanner = guard.scanner = None
             loop.tick()
+            if pose is not None:
+                try:
+                    pose.tick(clock.now(), loop.output)
+                except Exception as e:  # odometry is never worth a crash
+                    events.emit("fault", error=f"odometry failed: {e!r}")
+                    pose.close()
+                    pose = None
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")
             was_stale = loop.stale
             if status is not None and n % SNAPSHOT_EVERY == 0:
-                status.publish(snapshot(clock.now(), commit, manager, pad_state, loop, guard, scanner, health))
+                status.publish(snapshot(clock.now(), commit, manager, pad_state, loop, guard, scanner, health, pose))
             elapsed = clock.now() - started
             if elapsed > period:
                 events.emit("tick_overrun", elapsed=elapsed, period=period)
@@ -156,6 +164,30 @@ def start_scanner(events, clock):
         return None
 
 
+def start_pose(events):
+    """Encoders and gyro, each only when its flag is set (not wired yet: hardware/wiring.md)."""
+    encoders = imu = None
+    if os.environ.get("ROVER_ENCODERS") == "1":
+        try:
+            from rover.encoders import GpiodEncoders
+
+            encoders = GpiodEncoders()
+        except Exception as e:
+            events.emit("fault", error=f"encoders unavailable: {e!r}")
+    if os.environ.get("ROVER_IMU") == "1":
+        try:
+            from rover.imu import Mpu6050
+
+            imu = Mpu6050()
+        except Exception as e:
+            events.emit("fault", error=f"imu unavailable: {e!r}")
+    if encoders is None and imu is None:
+        return None
+    from rover.odometry import PoseTracker
+
+    return PoseTracker(encoders, imu)
+
+
 def start_status(events):
     try:
         from rover.status import StatusServer
@@ -173,11 +205,14 @@ def main():
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     scanner = start_scanner(events, clock)
     status = start_status(events)
+    pose = start_pose(events)
     health = Health(events, ThrottleReader(), extras=[scanner.take_stats] if scanner is not None else [])
     try:
         serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(),
-              pad=Pad() if Pad else None, scanner=scanner, health=health, status=status)
+              pad=Pad() if Pad else None, scanner=scanner, health=health, status=status, pose=pose)
     finally:
+        if pose is not None:
+            pose.close()
         drive_input.close()
         motors.close()
         if scanner is not None:

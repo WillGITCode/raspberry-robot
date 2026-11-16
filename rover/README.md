@@ -24,6 +24,13 @@ Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default 
 - `rover/scanner.py`: owns both. Pattern `ahead` holds 95 degrees and pings at 25 Hz, relaxing the servo once still; `sweep` steps 10 -> 170 -> 10 by 20 degrees (about 3 s a round). Each reading keeps its angle and time. A mode picks the pattern with a `scan` attribute (default `ahead`).
 - `rover/guard.py`: limits forward speed (the mean of the two sides) by the freshest valid reading within 20 degrees of ahead: zero at 20 cm or less, full from 60 cm. Turning and reverse are never limited, so the robot can back off or spin away. With no valid reading in the last 0.5 s, forward speed is capped at 0.3 (no boost), and a close reading from the last 2 s still counts. If the sensors cannot start, the service runs on with a `fault` event and the guard stays blind (capped).
 
+## Odometry (ready, not wired)
+
+- `rover/encoders.py`: the two front 10-slot encoders, counted with gpiod edge events (both edges, kernel debounce 300 us): about 10.2 mm per edge on the 65 mm wheels. Single channel, so each count takes its sign from that side's motor output.
+- `rover/imu.py`: the GY-521 (MPU-6050) gyro over I2C with smbus2: the yaw rate, with its bias measured while the motors coast at start.
+- `rover/odometry.py`: the pose (x, y, heading, distance, speed per side), with heading from the gyro (on a 4WD skid-steer robot, wheel heading slips) and distance from the encoders. It shows on the status page as `pose`.
+- Off by default: the encoder pins (BOARD 29/31) and moving the servo off the I2C pin (to BOARD 12) are proposals in `hardware/wiring.md`, waiting on Boss. Once wired, set `ROVER_ENCODERS=1` and/or `ROVER_IMU=1` for the service (a systemd drop-in) after a bench check.
+
 ## Health and the status page
 
 - `rover/health.py`: a `health` event every 5 s with the CPU temperature, the throttle flags (`vcgencmd get_throttled`, read on a background thread; `under_voltage` means the supply sagged), tick time p50/p99/max, and ping counts and errors.
