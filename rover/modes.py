@@ -10,6 +10,7 @@ class Sense:
     """What the sensors say this tick, for modes. Modes read this; they never touch a device."""
     ahead: object = None  # the guard's reading ahead (rover.scanner.Reading) or None
     readings: tuple = ()  # the newest reading at each angle
+    ahead_recent: object = None  # the nearest valid reading ahead over the last 1 s (blind only if None)
 
 
 @dataclass(frozen=True)
