@@ -9,6 +9,7 @@ gpiozero cannot do this: DistanceSensor needs two pins, and its flip-and-time pa
 broken on lgpio since kernel 6.6 (gpiozero #1135).
 """
 import time
+from collections import deque
 from dataclasses import dataclass
 
 CHIP = "/dev/gpiochip0"
@@ -75,6 +76,7 @@ class GpiodPing:
         self._high = gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.ACTIVE)
         self.req = gpiod.request_lines(chip, consumer="rover-ping", config={gpio: self._input})
         self._pending = None  # (trigger_ns, t, flip_us, edges)
+        self.recent = deque(maxlen=40)  # raw edges of the last pings, for /debug/ping
 
     @property
     def busy(self):
@@ -110,6 +112,9 @@ class GpiodPing:
             echo = Echo(None, t, "no_fall" if edges else "no_echo", flip_us)
         if echo is not None:
             self._pending = None
+            self.recent.append({
+                "t": round(t, 3), "flip_us": round(flip_us), "distance": echo.distance, "error": echo.error,
+                "edges": [("R" if rising else "F", round((ts - trigger_ns) / 1000)) for rising, ts in edges]})
         return echo
 
     def _drain(self):

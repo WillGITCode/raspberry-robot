@@ -3,6 +3,7 @@
 GET /        the status page (rover/static/index.html)
 GET /state   the latest snapshot as JSON
 GET /events  the snapshot as server-sent events, 10 a second
+GET /debug/<name>  a diagnostic dump registered in `debug` (the ping's raw edges: /debug/ping)
 
 There is no control endpoint: nothing here can move the robot.
 """
@@ -21,6 +22,7 @@ class StatusServer:
     def __init__(self, host="0.0.0.0", port=PORT, page=PAGE):
         self.snapshot = {}
         self.page = page
+        self.debug = {}  # name -> callable returning something JSON can encode
         server = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -35,6 +37,8 @@ class StatusServer:
                     self._send(200, "application/json", json.dumps(server.snapshot).encode())
                 elif path == "/events":
                     self._stream()
+                elif path.startswith("/debug/") and path[7:] in server.debug:
+                    self._send(200, "application/json", json.dumps(server.debug[path[7:]]()).encode())
                 else:
                     self._send(404, "text/plain", b"not found\n")
 
