@@ -25,6 +25,8 @@ def describe(e):
         return f"service start  commit {str(e.get('commit', ''))[:7]}"
     if ev == "stop":
         return "service stop"
+    if ev == "settings":
+        return "settings " + " ".join(f"{k}={v:g}" for k, v in e.items() if k not in ("t", "event"))
     if ev == "deploy":
         return f"DEPLOY {str(e.get('commit', ''))[:7]} from {e.get('from')}"
     if ev == "mode_change":

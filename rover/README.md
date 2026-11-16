@@ -24,6 +24,15 @@ Drive commands arrive on a Unix datagram socket (`$ROVER_DRIVE_SOCKET`, default 
 - `rover/scanner.py`: owns both. Pattern `ahead` holds 95 degrees and pings at 25 Hz, relaxing the servo once still; `sweep` steps 10 -> 170 -> 10 by 20 degrees (about 3 s a round); `fan` steps 95, 65, 95, 125 (about 0.7 s a round) to catch walls met at a shallow angle. Each reading keeps its angle and time. A mode picks the pattern with a `scan` attribute (default `ahead`).
 - `rover/guard.py`: limits forward speed (the mean of the two sides) by the nearest valid reading within 20 degrees of ahead over the last 0.2 s (the cone often sees two surfaces; the closer wins, and a failed ping never hides the valid ones before it): zero at about 24 cm or less (a limit under 0.1 snaps to zero), full from 60 cm. `obstacle_limit` is logged only while there is forward motion to limit, once a new state holds 0.15 s ("stop" at once). Turning and reverse are never limited, so the robot can back off or spin away. With no valid reading in the last 0.5 s, forward speed is capped at 0.3 (no boost), and a close reading from the last 2 s still counts. If the sensors cannot start, the service runs on with a `fault` event and the guard stays blind (capped).
 
+## Settings (tuning without a deploy)
+
+`rover/settings.py` lists the tunables: speed cap and boost, steering `inner_drop`, deadzone, ramp, the guard's distances and blind cap, and explore's speeds and distances. Each one has a safe range. At start the service applies `/etc/rover/settings.toml` (or `$ROVER_SETTINGS`) and logs a `settings` event. A bad value is a `fault`, and that value keeps its default. On the desktop:
+
+- `tools/bench tune --list`: every tunable with its default and range.
+- `tools/bench tune`: the robot's settings file.
+- `tools/bench tune inner_drop=0.35 speed_cap=0.4`: checks the values here, merges them into the file on the Pi and restarts the service (about 2 s; press Start again).
+- `tools/bench tune --reset`: back to the defaults.
+
 ## Modes
 
 One mode at a time, in `rover/modes.py`; a mode returns a drive command and never touches hardware. It reads the pad and `Sense` (the guard's reading ahead and the newest reading at each angle), and picks the scanner's pattern with its `scan` attribute.
