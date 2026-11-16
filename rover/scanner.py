@@ -52,7 +52,8 @@ class Scanner:
         self._last_trigger = float("-inf")
         self._trigger_angle = None
         self._relaxed = False
-        self._pings, self._errors = 0, {}
+        self._pings, self._errors, self._flips = 0, {}, []
+        self._retried = False
 
     def set_pattern(self, name):
         if name not in ("ahead", "sweep", "fan"):
@@ -70,6 +71,17 @@ class Scanner:
         """Collect a finished echo, move the servo or start a ping. Returns this tick's new readings."""
         out = []
         echo = self.ping.poll()
+        if echo is not None and getattr(echo, "flip_us", None) is not None:
+            self._flips.append(echo.flip_us)
+        if echo is not None and echo.error == "missed_rise" and not self._retried:
+            # the flip to input came too late for the echo's start: ping again at once, same angle
+            self._pings += 1
+            self._errors["missed_rise"] = self._errors.get("missed_rise", 0) + 1
+            self._retried = True
+            if self.ping.trigger():
+                self._last_trigger = now
+            return []
+        self._retried = False
         if echo is not None:
             r = Reading(self._trigger_angle, echo.distance, echo.time, echo.error)
             self.latest[r.angle] = r
@@ -120,9 +132,13 @@ class Scanner:
         return min(recent, key=lambda r: r.distance)
 
     def take_stats(self):
-        """Pings and errors since the last call (for the health event)."""
-        stats = {"pings": self._pings, "ping_errors": self._errors}
-        self._pings, self._errors = 0, {}
+        """Pings, errors and the ping's flip time (trigger end to input) since the last call, for the
+        health event. A slow flip (over the sensor's 750 us hold-off) is what makes a missed_rise."""
+        flips = sorted(self._flips)
+        stats = {"pings": self._pings, "ping_errors": self._errors,
+                 "flip_us_p50": round(flips[len(flips) // 2]) if flips else None,
+                 "flip_us_max": round(flips[-1]) if flips else None}
+        self._pings, self._errors, self._flips = 0, {}, []
         return stats
 
     def close(self):

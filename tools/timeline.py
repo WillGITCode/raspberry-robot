@@ -77,7 +77,8 @@ def main():
             if e.get("throttle_flags"):
                 off.append("POWER " + ",".join(e["throttle_flags"]))
             if e.get("ping_errors"):
-                off.append(f"ping errors {e['ping_errors']} of {e.get('pings')}")
+                flip = f", flip p50/max {e.get('flip_us_p50')}/{e.get('flip_us_max')} us" if e.get("flip_us_max") else ""
+                off.append(f"ping errors {e['ping_errors']} of {e.get('pings')}{flip}")
             if (e.get("tick_ms_max") or 0) > SLOW_TICK_MS:
                 off.append(f"slow tick {e['tick_ms_max']} ms")
             if off:
