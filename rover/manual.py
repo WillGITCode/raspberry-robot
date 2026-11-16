@@ -1,6 +1,6 @@
 from rover.command import DriveCommand
 
-SPEED_CAP = 0.5
+SPEED_CAP = 0.3
 BOOST_CAP = 1.0
 BOOST_THRESHOLD = 0.5  # right trigger pulled past half
 
