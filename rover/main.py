@@ -129,7 +129,7 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                     continue
                 if isinstance(item, ModeRequest):
                     if bench is not None:
-                        bench.end("replaced")
+                        bench.end("idle" if item.name == "idle" else "replaced")
                         bench = None
                     socket_cmd = None
                     if item.name == "idle":
