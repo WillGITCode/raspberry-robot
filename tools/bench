@@ -22,6 +22,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   ping-check [seconds]            PING))) distances, errors and pin flip times on the Pi (default 10 s; no motion)
   servo-check                     pan servo to 10, 95, 170, then back to 95 (moves the servo only)
   scan-check                      one full ping sweep, 10 to 170 and back, printed per angle (servo only)
+  loop-check [seconds]            the whole tick loop from a temporary copy, real ping/servo/status page, MOCK motors
   check-stops                     scripted run on the stand: drive, deadman, kill -9, stop; pass/fail per step (moves the wheels)
 USAGE
   exit 2
@@ -377,6 +378,20 @@ cmd_scan_check() {
     | remote 'd=$(mktemp -d) && tar -xz -C "$d" && cd "$d" && python3 -m tools.probes.scan_check; rc=$?; rm -rf "$d"; exit $rc'
 }
 
+# loop-check: the service's loop with gpiozero's mock pins for the motors (the wheels cannot move), the real
+# ping, servo and status page (port 8081), its own drive socket; prints /state and the key events
+cmd_loop_check() {
+  secs=${1:-15}
+  [[ "$secs" =~ ^[0-9]+$ ]] && [ "$secs" -ge 6 ] || usage
+  [ $DRY = 1 ] && { echo "+ copy rover/ to a temp dir on the Pi; run python3 -m rover.main for $secs s with mock motor pins"; return 0; }
+  d=$(remote mktemp -d)
+  tar -C "$ROOT" -cz rover | remote "tar -xz -C $d"
+  remote "cd $d && (GPIOZERO_PIN_FACTORY=mock GPIOZERO_MOCK_PIN_CLASS=mockpwmpin ROVER_DRIVE_SOCKET=$d/drive.sock \
+      ROVER_STATUS_PORT=8081 ROVER_COMMIT=loop-check timeout $secs python3 -m rover.main > $d/events.log 2>&1 &) ; \
+    sleep $((secs - 3)); echo '== /state'; curl -s --max-time 2 localhost:8081/state; echo; sleep 4; \
+    echo '== events'; grep -E '\"(start|health|obstacle_limit|fault|tick_overrun|mode_change)\"' $d/events.log | tail -n 15; rm -rf $d"
+}
+
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
@@ -385,6 +400,7 @@ case $c in
   ping-check) cmd_ping_check "$@" ;;
   servo-check) cmd_servo_check "$@" ;;
   scan-check) cmd_scan_check "$@" ;;
+  loop-check) cmd_loop_check "$@" ;;
   check-stops) cmd_check_stops "$@" ;;
   *) usage ;;
 esac
