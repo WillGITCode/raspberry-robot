@@ -157,6 +157,8 @@ def main():
     scanner = start_scanner(events, clock)
     status = start_status(events)
     pose = start_pose(events)
+    if status is not None and scanner is not None and hasattr(scanner.ping, "recent"):
+        status.debug["ping"] = lambda: list(scanner.ping.recent)  # copied in the server's thread
     health = Health(events, ThrottleReader(), extras=[scanner.take_stats] if scanner is not None else [])
     try:
         serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(),
