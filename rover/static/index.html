@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rover status</title>
+<style>
+  :root { --bg: #101418; --panel: #1a2027; --text: #e6e9ec; --dim: #8a949e; --ok: #3fb950; --warn: #d29922; --bad: #f85149; --accent: #58a6ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, sans-serif; }
+  header { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 12px; }
+  h1 { font-size: 20px; margin: 0; }
+  .dim { color: var(--dim); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .panel { background: var(--panel); border-radius: 8px; padding: 12px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--dim); margin: 0 0 8px; }
+  .big { font-size: 22px; font-weight: 600; }
+  .row { display: flex; justify-content: space-between; gap: 8px; }
+  .bar { height: 10px; background: #2b333c; border-radius: 5px; position: relative; overflow: hidden; margin: 4px 0 8px; }
+  .bar i { position: absolute; top: 0; bottom: 0; background: var(--accent); }
+  .clear { color: var(--ok); } .slow, .blind { color: var(--warn); } .stop, .lost { color: var(--bad); }
+  canvas { width: 100%; max-width: 420px; display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<header><h1>Rover</h1><span id="mode" class="big">…</span><span id="conn" class="dim">connecting</span><span id="commit" class="dim"></span></header>
+<div class="grid">
+  <section class="panel"><h2>Drive</h2>
+    <div class="row"><span>command</span><span id="src" class="dim"></span></div>
+    <div class="row"><span>left</span><span id="cl"></span></div><div class="bar"><i id="bcl"></i></div>
+    <div class="row"><span>right</span><span id="cr"></span></div><div class="bar"><i id="bcr"></i></div>
+    <div class="row"><span>motors</span><span id="out"></span></div>
+    <div class="row"><span>pad</span><span id="pad"></span></div>
+  </section>
+  <section class="panel"><h2>Obstacle guard</h2>
+    <div id="gstate" class="big">…</div>
+    <div class="row"><span>ahead</span><span id="gdist"></span></div>
+    <div class="row"><span>forward limit</span><span id="glim"></span></div>
+  </section>
+  <section class="panel"><h2>Ping (10° left … 170° right)</h2><canvas id="radar" width="420" height="230"></canvas></section>
+  <section class="panel"><h2>Health</h2>
+    <div class="row"><span>CPU</span><span id="temp"></span></div>
+    <div class="row"><span>power</span><span id="thr"></span></div>
+    <div class="row"><span>tick p99 / max</span><span id="tick"></span></div>
+  </section>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const f2 = v => v == null ? "–" : v.toFixed(2);
+const cm = v => v == null ? "–" : (v * 100).toFixed(0) + " cm";
+function bar(el, v) { const w = Math.min(1, Math.abs(v || 0)) * 50; el.style.width = w + "%"; el.style.left = (v < 0 ? 50 - w : 50) + "%"; }
+function radar(ranges) {
+  const c = $("radar"), g = c.getContext("2d"), W = c.width, H = c.height, cx = W / 2, cy = H - 10, R = H - 20, MAX = 2.0;
+  g.clearRect(0, 0, W, H); g.strokeStyle = "#2b333c"; g.fillStyle = "#8a949e"; g.font = "11px system-ui";
+  for (const m of [0.5, 1, 1.5, 2]) { g.beginPath(); g.arc(cx, cy, R * m / MAX, Math.PI, 2 * Math.PI); g.stroke(); g.fillText(m + " m", cx + 4, cy - R * m / MAX + 12); }
+  for (const r of ranges || []) {
+    const th = (r.angle - 95) * Math.PI / 180, fade = Math.max(0.15, 1 - r.age / 3);
+    const d = r.distance == null ? MAX : Math.min(r.distance, MAX), x = cx + Math.sin(th) * R * d / MAX, y = cy - Math.cos(th) * R * d / MAX;
+    g.globalAlpha = fade; g.strokeStyle = r.distance == null ? "#d29922" : r.distance < 0.2 ? "#f85149" : "#58a6ff";
+    g.beginPath(); g.moveTo(cx, cy); g.lineTo(x, y); g.stroke(); g.beginPath(); g.arc(x, y, 4, 0, 2 * Math.PI); g.fillStyle = g.strokeStyle; g.fill();
+    g.globalAlpha = 1;
+  }
+}
+function render(s) {
+  $("mode").textContent = s.mode || "no pad"; $("commit").textContent = s.commit ? s.commit.slice(0, 7) : "";
+  const c = s.command || {}; $("src").textContent = c.source || "none"; $("cl").textContent = f2(c.left); $("cr").textContent = f2(c.right);
+  bar($("bcl"), c.left); bar($("bcr"), c.right);
+  const o = s.output || {}; $("out").textContent = f2(o.left) + " / " + f2(o.right);
+  $("pad").textContent = s.pad_lost ? "lost" : "ok"; $("pad").className = s.pad_lost ? "lost" : "clear";
+  const gd = s.guard || {}; $("gstate").textContent = gd.state || "idle"; $("gstate").className = "big " + (gd.state || "");
+  $("gdist").textContent = cm(gd.distance); $("glim").textContent = f2(gd.limit);
+  radar(s.ranges);
+  const h = s.health || {}; $("temp").textContent = h.cpu_temp == null ? "–" : h.cpu_temp.toFixed(1) + " °C";
+  $("thr").textContent = h.throttled == null ? "–" : (h.throttle_flags && h.throttle_flags.length ? h.throttle_flags.join(", ") : "ok") + " (" + h.throttled + ")";
+  $("thr").className = h.throttle_flags && h.throttle_flags.length ? "stop" : "clear";
+  $("tick").textContent = h.tick_ms_p99 == null ? "–" : h.tick_ms_p99 + " / " + h.tick_ms_max + " ms";
+}
+const es = new EventSource("/events");
+es.onopen = () => { $("conn").textContent = "live"; };
+es.onerror = () => { $("conn").textContent = "reconnecting"; };
+es.onmessage = e => render(JSON.parse(e.data));
+</script>
+</body>
+</html>

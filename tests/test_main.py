@@ -132,3 +132,38 @@ class ScriptedPad:
         self.state = self.script.get(self.n, self.state)
         self.n += 1
         return self.state
+
+
+def test_guard_stops_a_forward_drive_at_an_obstacle(motors):
+    from rover.ping import FakePing
+    from rover.scanner import Scanner
+    from rover.servo import FakeServo
+
+    clock, out = FakeClock(), io.StringIO()
+    ping = FakePing(clock, distance=1.5)
+    scanner = Scanner(ping, FakeServo())
+    seen = []
+
+    class Status:
+        def publish(self, snap):
+            seen.append(snap)
+
+    def sleep(s):
+        clock.advance(0.02)
+        ping.distance = 1.5 if clock.now() < 1.0 else 0.15  # something appears at t = 1 s
+
+    levels = []
+
+    class Input(ScriptedInput):
+        def poll(self):
+            levels.append(motors.left.enable.value)
+            return [DriveCommand(0.5, 0.5, "bench", clock.now())]
+
+    from rover.command import DriveCommand
+    serve(motors, clock, FakeNotifier(), Events(out, clock), Input({}), ticks=80, sleep=sleep,
+          scanner=scanner, status=Status())
+    assert max(levels[30:45]) == 0.5  # clear ahead: the full command
+    assert levels[-1] == 0  # 15 cm ahead: forward stopped
+    states = [json.loads(x)["state"] for x in out.getvalue().splitlines() if '"obstacle_limit"' in x]
+    assert states[0] == "blind" and "clear" in states and states[-1] == "stop"
+    assert seen and seen[-1]["guard"]["state"] == "stop" and seen[-1]["ranges"][0]["angle"] == 95

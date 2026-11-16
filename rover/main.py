@@ -6,8 +6,11 @@ import time
 
 from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
+from rover.guard import ObstacleGuard
+from rover.health import Health, ThrottleReader
 from rover.loop import TickLoop
 from rover.motors import Motors
+from rover.scanner import Scanner
 
 try:
     from rover.modes import ModeManager
@@ -16,6 +19,7 @@ except ImportError:  # python-evdev missing: run without a pad, socket input sti
     ModeManager = Pad = None
 
 PERIOD_S = 0.02
+SNAPSHOT_EVERY = 5  # ticks: the status page gets 10 snapshots a second
 
 
 class RealClock:
@@ -48,15 +52,39 @@ def current_commit():
         return "unknown"
 
 
+def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health):
+    """What the status page shows. Built in the loop's thread; published as one new dict."""
+    cmd = loop.command
+    return {
+        "t": round(now, 3),
+        "commit": commit,
+        "mode": manager.name if manager is not None else None,
+        "latched": manager.latched if manager is not None else None,
+        "pad_lost": pad_state.lost if pad_state is not None else None,
+        "command": None if cmd is None else {
+            "left": cmd.left, "right": cmd.right, "source": cmd.source, "age": round(now - cmd.time, 3)},
+        "output": {"left": loop.output[0], "right": loop.output[1]},
+        "stale": loop.stale,
+        "guard": {"state": guard.state, "distance": guard.distance, "limit": guard.limit_value},
+        "ranges": [] if scanner is None else [
+            {"angle": r.angle, "distance": r.distance, "error": r.error, "age": round(now - r.time, 3)}
+            for r in scanner.latest.values()],
+        "health": health.last if health is not None else None,
+    }
+
+
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
-          period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None):
+          period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None,
+          scanner=None, health=None, status=None):
     """Run the tick loop until `ticks` ticks are done (forever if None)."""
-    loop = TickLoop(motors, clock)
+    guard = ObstacleGuard(scanner, events)
+    loop = TickLoop(motors, clock, guard=guard)
     events.emit("start", commit=commit)
     notifier.notify("READY=1")
     manager = ModeManager(events) if pad is not None else None
     was_stale = True
     socket_cmd = None
+    pad_state = None
     n = 0
     try:
         while ticks is None or n < ticks:
@@ -71,18 +99,26 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                 events.emit("drive", left=item.left, right=item.right, source=item.source)
             if manager is not None:
                 # a live pad mode wins; with no pad command the socket drives, except Back always stops
-                state = pad.poll()
-                cmd = manager.update(state, clock.now())
-                if state.back:
+                pad_state = pad.poll()
+                cmd = manager.update(pad_state, clock.now())
+                if pad_state.back:
                     socket_cmd = None
                 loop.submit(cmd if cmd is not None else socket_cmd)
+            if scanner is not None:
+                scanner.set_pattern(getattr(manager.mode, "scan", "ahead") if manager is not None else "ahead")
+                scanner.tick(clock.now())  # before the motors, so the guard sees this tick's echo
             loop.tick()
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")
             was_stale = loop.stale
+            if status is not None and n % SNAPSHOT_EVERY == 0:
+                status.publish(snapshot(clock.now(), commit, manager, pad_state, loop, guard, scanner, health))
             elapsed = clock.now() - started
             if elapsed > period:
                 events.emit("tick_overrun", elapsed=elapsed, period=period)
+            if health is not None:
+                health.tick_done(elapsed)
+                health.maybe_emit(clock.now())
             notifier.notify("WATCHDOG=1")
             n += 1
             sleep(max(0.0, period - elapsed))
@@ -94,16 +130,50 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
         events.emit("stop")
 
 
+def start_scanner(events, clock):
+    """The real ping and servo, or None (with a fault event): the guard then counts as blind."""
+    ping = None
+    try:
+        from rover.ping import GpiodPing
+        from rover.servo import LgpioServo
+
+        ping = GpiodPing(clock=clock.now)
+        return Scanner(ping, LgpioServo())
+    except Exception as e:
+        if ping is not None:
+            ping.close()
+        events.emit("fault", error=f"sensors unavailable: {e!r}")
+        return None
+
+
+def start_status(events):
+    try:
+        from rover.status import StatusServer
+
+        return StatusServer(port=int(os.environ.get("ROVER_STATUS_PORT", "8080")))
+    except Exception as e:
+        events.emit("fault", error=f"status page unavailable: {e!r}")
+        return None
+
+
 def main():
     clock = RealClock()
     events = Events(sys.stdout, clock)
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
+    scanner = start_scanner(events, clock)
+    status = start_status(events)
+    health = Health(events, ThrottleReader(), extras=[scanner.take_stats] if scanner is not None else [])
     try:
-        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(), pad=Pad() if Pad else None)
+        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(),
+              pad=Pad() if Pad else None, scanner=scanner, health=health, status=status)
     finally:
         drive_input.close()
         motors.close()
+        if scanner is not None:
+            scanner.close()
+        if status is not None:
+            status.close()
 
 
 if __name__ == "__main__":

@@ -19,6 +19,9 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
   pad-check                       list evdev devices, then 20 s of live pad readings and mode_change events (read-only)
+  ping-check [seconds]            PING))) distances, errors and pin flip times on the Pi (default 10 s; no motion)
+  servo-check                     pan servo to 10, 95, 170, then back to 95 (moves the servo only)
+  scan-check                      one full ping sweep, 10 to 170 and back, printed per angle (servo only)
   check-stops                     scripted run on the stand: drive, deadman, kill -9, stop; pass/fail per step (moves the wheels)
 USAGE
   exit 2
@@ -300,11 +303,88 @@ print("== done")
 PY
 }
 
+# ping-check: rover/ping.py plus a probe, sent over ssh and run with the Pi's system python (gpiod)
+cmd_ping_check() {
+  secs=${1:-10}
+  [[ "$secs" =~ ^[0-9]+$ ]] || usage
+  { cat "$ROOT/rover/ping.py"; cat <<'PY'
+
+import statistics, subprocess, sys
+secs = int(sys.argv[1])
+try:
+    p = GpiodPing()
+except OSError as e:
+    print(f"GPIO {GPIO} is busy ({e}): rover.service owns the ping. Its status page:")
+    subprocess.run(["curl", "-s", "--max-time", "2", "http://localhost:8080/state"])
+    sys.exit(0)
+print(f"== PING))) on GPIO {GPIO} (BOARD 16), one ping every 40 ms for {secs} s")
+end, echoes = time.monotonic() + secs, []
+while time.monotonic() < end:
+    t0 = time.monotonic()
+    if not p.trigger():
+        print("pin high before trigger: echo still running or stuck high")
+        time.sleep(0.04)
+        continue
+    e = None
+    while e is None:  # the probe may wait; the tick loop never does
+        time.sleep(0.0005)
+        e = p.poll()
+    echoes.append(e)
+    if len(echoes) % 5 == 1:
+        d = f"{e.distance * 100:6.1f} cm" if e.distance is not None else f"no reading ({e.error})"
+        print(f"{e.time - echoes[0].time:6.2f} s  {d}  flip {e.flip_us:.0f} us")
+    time.sleep(max(0.0, 0.04 - (time.monotonic() - t0)))
+p.close()
+ok = [e.distance for e in echoes if e.distance is not None]
+errs = {}
+for e in echoes:
+    if e.error:
+        errs[e.error] = errs.get(e.error, 0) + 1
+flips = sorted(e.flip_us for e in echoes)
+print(f"== {len(echoes)} pings, {len(ok)} readings, errors {errs or 'none'}")
+if ok:
+    print(f"   distance cm: min {min(ok)*100:.1f}  median {statistics.median(ok)*100:.1f}  max {max(ok)*100:.1f}")
+print(f"   flip us: median {statistics.median(flips):.0f}  max {flips[-1]:.0f}  (must stay well under the 750 us hold-off)")
+PY
+  } | remote python3 - "$secs"
+}
+
+# servo-check: rover/servo.py plus a probe; the servo only, no wheels
+cmd_servo_check() {
+  [ $# = 0 ] || usage
+  { cat "$ROOT/rover/servo.py"; cat <<'PY'
+
+import sys
+try:
+    s = LgpioServo()
+except Exception as e:
+    print(f"servo GPIO busy or unavailable ({e}): rover.service may own it")
+    sys.exit(1)
+for a in (AHEAD, MIN_ANGLE, AHEAD, MAX_ANGLE, AHEAD):
+    print(f"angle {a:5.1f}  pulse {pulse_us(a)} us")
+    s.move(a)
+    time.sleep(0.8)
+s.close()
+print("== done: the servo should have looked ahead, right or left, ahead, the other way, ahead")
+PY
+  } | remote python3 -
+}
+
+# scan-check: a temporary copy of rover/ and the probe on the Pi; never touches rover.service or the motors
+cmd_scan_check() {
+  [ $# = 0 ] || usage
+  tar -C "$ROOT" -cz rover/__init__.py rover/ping.py rover/servo.py rover/scanner.py tools/probes/scan_check.py \
+    | remote 'd=$(mktemp -d) && tar -xz -C "$d" && cd "$d" && python3 -m tools.probes.scan_check; rc=$?; rm -rf "$d"; exit $rc'
+}
+
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
   deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
   pad-check) cmd_pad_check "$@" ;;
+  ping-check) cmd_ping_check "$@" ;;
+  servo-check) cmd_servo_check "$@" ;;
+  scan-check) cmd_scan_check "$@" ;;
   check-stops) cmd_check_stops "$@" ;;
   *) usage ;;
 esac
