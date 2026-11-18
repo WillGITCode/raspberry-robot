@@ -57,6 +57,7 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
     manager = ModeManager(events) if pad is not None else None
     was_stale = True
     socket_cmd = None
+    last_pad = None
     n = 0
     try:
         while ticks is None or n < ticks:
@@ -75,6 +76,10 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                 cmd = manager.update(state, clock.now())
                 if state.back:
                     socket_cmd = None
+                key = None if cmd is None else (cmd.left, cmd.right, cmd.source)
+                if key is not None and key != last_pad:
+                    events.emit("drive", left=cmd.left, right=cmd.right, source=cmd.source)
+                last_pad = key
                 loop.submit(cmd if cmd is not None else socket_cmd)
             loop.tick()
             if loop.stale and not was_stale:
