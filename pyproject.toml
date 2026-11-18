@@ -2,7 +2,7 @@
 name = "rover"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = ["gpiozero"]
+dependencies = ["gpiozero", "evdev"]
 
 [project.optional-dependencies]
 test = ["pytest"]

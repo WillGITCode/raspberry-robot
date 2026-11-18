@@ -119,3 +119,16 @@ def test_socket_input_feeds_commands(tmp_path):
     assert (got[0].left, got[0].right, got[0].time) == (0.5, -0.5, 1.0)
     assert isinstance(got[1], ValueError)
     di.close()
+
+
+# pad + modes inside the tick loop
+
+class ScriptedPad:
+    def __init__(self, script):
+        self.script, self.n = script, 0  # tick index -> PadState, held until the next entry
+        self.state = None
+
+    def poll(self):
+        self.state = self.script.get(self.n, self.state)
+        self.n += 1
+        return self.state

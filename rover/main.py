@@ -9,6 +9,12 @@ from rover.events import Events
 from rover.loop import TickLoop
 from rover.motors import Motors
 
+try:
+    from rover.modes import ModeManager
+    from rover.pad import Pad
+except ImportError:  # python-evdev missing: run without a pad, socket input still drives
+    ModeManager = Pad = None
+
 PERIOD_S = 0.02
 
 
@@ -43,12 +49,15 @@ def current_commit():
 
 
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
-          period=PERIOD_S, sleep=time.sleep, commit="unknown"):
+          period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None):
     """Run the tick loop until `ticks` ticks are done (forever if None)."""
     loop = TickLoop(motors, clock)
     events.emit("start", commit=commit)
     notifier.notify("READY=1")
+    manager = ModeManager(events) if pad is not None else None
     was_stale = True
+    socket_cmd = None
+    last_pad = None
     n = 0
     try:
         while ticks is None or n < ticks:
@@ -57,8 +66,21 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
                 if isinstance(item, Exception):
                     events.emit("fault", error=f"bad drive input: {item}")
                     continue
-                loop.submit(item)
+                socket_cmd = item
+                if manager is None:
+                    loop.submit(item)
                 events.emit("drive", left=item.left, right=item.right, source=item.source)
+            if manager is not None:
+                # a live pad mode wins; with no pad command the socket drives, except Back always stops
+                state = pad.poll()
+                cmd = manager.update(state, clock.now())
+                if state.back:
+                    socket_cmd = None
+                key = None if cmd is None else (cmd.left, cmd.right, cmd.source)
+                if key is not None and key != last_pad:
+                    events.emit("drive", left=cmd.left, right=cmd.right, source=cmd.source)
+                last_pad = key
+                loop.submit(cmd if cmd is not None else socket_cmd)
             loop.tick()
             if loop.stale and not was_stale:
                 events.emit("deadman_stop")
@@ -83,7 +105,7 @@ def main():
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     try:
-        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit())
+        serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(), pad=Pad() if Pad else None)
     finally:
         drive_input.close()
         motors.close()
