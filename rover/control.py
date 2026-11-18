@@ -50,6 +50,7 @@ class Arbiter:
         self.events, self.manager = events, manager
         self.bench = None  # a BenchMode while the bench runs a mode
         self.bench_drive = None  # the last socket drive command (the deadman ages it out)
+        self.last_drive = None  # (left, right, source) of the last drive event, to log changes only
         self.source = None  # who drove on the last tick: pad, bench_mode, bench_drive or None
 
     def receive(self, item, now):
@@ -68,7 +69,7 @@ class Arbiter:
         else:
             self._end_bench("drive")
             self.bench_drive = item
-            self.events.emit("drive", left=item.left, right=item.right, source=item.source)
+            self._note(item)
 
     def decide(self, now, pad_state, sense):
         """This tick's command. It may be None or stale: the deadman then coasts the motors."""
@@ -80,15 +81,28 @@ class Arbiter:
                 self._end_bench("pad")
             if cmd is not None:
                 self.source = "pad"
+                self._note(cmd)
                 return cmd
         if self.bench is not None:
             if self.bench.finished(now):
                 self._end_bench("deadline" if now >= self.bench.deadline else "mode")
             else:
                 self.source = "bench_mode"
-                return self.bench.tick(Inputs(pad_state or PadState(), now, sense or Sense()))
+                cmd = self.bench.tick(Inputs(pad_state or PadState(), now, sense or Sense()))
+                self._note(cmd)
+                return cmd
         self.source = "bench_drive" if self.bench_drive is not None else None
+        self._note(self.bench_drive)
         return self.bench_drive
+
+    def _note(self, cmd):
+        """Emit a `drive` event when the command differs from the last one emitted (50 Hz stays quiet)."""
+        if cmd is None:
+            return
+        key = (cmd.left, cmd.right, cmd.source)
+        if key != self.last_drive:
+            self.last_drive = key
+            self.events.emit("drive", left=cmd.left, right=cmd.right, source=cmd.source)
 
     @property
     def active_mode(self):
