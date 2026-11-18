@@ -88,6 +88,7 @@ Strip positions on the real board (which column numbers) are TBD until the board
 Do these before any wiring.
 
 - [ ] Confirm the proposed servo pin: BOARD 12 (moved off BOARD 5).
+- [ ] Servo on hardware PWM (kills the jitter): move the servo signal wire from BOARD 5 to BOARD 12; add `dtoverlay=pwm,pin=18,func=2` to `/boot/firmware/config.txt`; reboot; check `ls /sys/class/pwm/pwmchip0` (it must exist). Then set `ROVER_SERVO=hwpwm` for the service and run `python tools/probes/servo_hwpwm_check.py` (sweep 60-130 deg, hold 95 deg 10 s). Until then the software servo on BOARD 5 stays the default. No clash with ENA/ENB: BOARD 32/33 (GPIO 12/13) use software PWM (gpiozero `PWMOutputDevice`, `rover/motors.py`), so they do not touch the PWM block. GPIO 18 is PWM0 channel 0 (alt5) and GPIO 12 is also PWM0 channel 0 (alt0): they are the same channel, so if ENA ever moves to hardware PWM it cannot run alongside the servo; GPIO 13 (PWM channel 1) would be free.
 - [ ] Confirm the proposed encoder pins: BOARD 29 and 31, and which encoder is left or right.
 - [ ] Confirm the 1 kΩ PING series resistor (or choose another value), and that one is on hand.
 - [ ] Confirm BOARD 1 and BOARD 6 for the encoder supply and ground.
