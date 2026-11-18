@@ -20,8 +20,9 @@ class Sim:
         self.x = min(max(self.x + v * math.cos(self.heading) * dt, 0.0), self.width)
         self.y = min(max(self.y + v * math.sin(self.heading) * dt, 0.0), self.height)
 
-    def ping(self):
-        dx, dy = math.cos(self.heading), math.sin(self.heading)
+    def ping(self, offset=0.0):
+        """Range along heading + offset (radians, left positive) to the nearest wall."""
+        dx, dy = math.cos(self.heading + offset), math.sin(self.heading + offset)
         best = self.max_range
         for d, p, lo, hi in ((dx, self.x, 0.0, self.width), (dy, self.y, 0.0, self.height)):
             if d > 1e-9:
@@ -29,3 +30,55 @@ class Sim:
             elif d < -1e-9:
                 best = min(best, (lo - p) / d)
         return best
+
+
+class SimMotors:
+    """Stands in for Motors: keeps the last command; the test or runner steps the Sim with it."""
+
+    def __init__(self):
+        self.left = self.right = 0.0
+
+    def drive(self, left, right):
+        self.left, self.right = left, right
+
+    def coast(self):
+        self.left = self.right = 0.0
+
+    def close(self):
+        self.coast()
+
+
+class SimPing:
+    """A ping that measures the Sim along the servo's angle (95 is ahead, 10 is left).
+
+    The echo arrives after the sound's round trip; past max_range there is no echo."""
+
+    def __init__(self, sim, servo, clock, ahead=95.0):
+        self.sim, self.servo, self.clock, self.ahead = sim, servo, clock, ahead
+        self._pending = None
+
+    @property
+    def busy(self):
+        return self._pending is not None
+
+    def trigger(self):
+        if self._pending is not None:
+            return False
+        angle = self.servo.angle if self.servo.angle is not None else self.ahead
+        d = self.sim.ping(math.radians(self.ahead - angle))
+        self._pending = (self.clock.now(), d if d < self.sim.max_range else None)
+        return True
+
+    def poll(self):
+        from rover.ping import ECHO_TIMEOUT_S, Echo
+
+        if self._pending is None:
+            return None
+        t, d = self._pending
+        if self.clock.now() - t < (2 * d / 343.0 if d is not None else ECHO_TIMEOUT_S):
+            return None
+        self._pending = None
+        return Echo(d, t, None if d is not None else "no_echo")
+
+    def close(self):
+        pass
