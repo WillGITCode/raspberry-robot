@@ -22,14 +22,42 @@ def test_still_waiting_gives_none():
     assert echo_from_edges([], T0, 0.0) is None
 
 
-@pytest.mark.parametrize("edges,error", [
-    ([(False, T0 + us(900))], "missed_rise"),  # echo began before the pin was an input
-    ([(True, T0 + us(750)), (False, T0 + us(800))], "glitch"),
-    ([(True, T0 + us(750)), (False, T0 + us(750) + us(25_000))], "too_long"),
-])
-def test_bad_echoes_are_no_reading(edges, error):
-    e = echo_from_edges(edges, T0, 0.0)
-    assert e.distance is None and e.error == error
+def test_too_long_is_no_reading():
+    e = echo_from_edges([(True, T0 + us(750)), (False, T0 + us(750) + us(25_000))], T0, 0.0)
+    assert e.distance is None and e.error == "too_long"
+
+
+def test_a_fall_too_soon_after_the_start_is_not_the_end():
+    # a 50 us dip is noise: the echo goes on until the real fall
+    edges = [(True, T0 + us(750)), (False, T0 + us(800))]
+    assert echo_from_edges(edges, T0, 0.0) is None  # still waiting for the end
+    end = T0 + us(750) + us(2900)
+    edges.append((False, end))
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(2900e-6))
+
+
+def test_motor_noise_in_the_hold_off_is_ignored():
+    edges = [(False, T0 + us(120)), (False, T0 + us(300)), (True, T0 + us(750)),
+             (False, T0 + us(750) + us(2900))]
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(2900e-6))
+
+
+def test_the_start_must_be_a_rise_inside_the_hold_off_window():
+    # bench, full speed: noise spikes read "falling"; one at 711 us must not pass as the start
+    edges = [(False, T0 + us(385)), (False, T0 + us(711)), (True, T0 + us(752)), (False, T0 + us(2270))]
+    assert echo_from_edges(edges, T0, 0.0).distance == pytest.approx(width_to_distance(1518e-6))
+    late = [(True, T0 + us(1200)), (False, T0 + us(3000))]  # a rise outside the window: noise
+    assert echo_from_edges(late, T0, 0.0).error == "lost_start"
+
+
+def test_a_lost_start_is_no_reading_never_a_guess():
+    # only a late edge arrived: guessing the start read 1-2 m with an obstacle at 26 cm
+    e = echo_from_edges([(False, T0 + us(750) + us(2900))], T0, 0.0)
+    assert e.distance is None and e.error == "lost_start"
+
+
+def test_still_waiting_while_the_start_may_come():
+    assert echo_from_edges([(False, T0 + us(300))], T0, 0.0) is None
 
 
 def test_edges_before_the_trigger_are_ignored():

@@ -51,11 +51,12 @@ class ObstacleGuard:
         self.limit_value = vmax
         if state != self.state:
             self.state, self._since = state, now
-        if state != self._logged and (state == "stop" or now - self._since >= EVENT_HOLD_S):
+        v, w = (left + right) / 2, (right - left) / 2
+        forward = v > 0  # the guard only decides something when there is forward motion to limit
+        if forward and state != self._logged and (state == "stop" or now - self._since >= EVENT_HOLD_S):
             self._logged = state
             if self.events is not None:
                 self.events.emit("obstacle_limit", state=state, distance=self.distance, limit=vmax)
-        v, w = (left + right) / 2, (right - left) / 2
         if v <= vmax:
             return left, right
         return vmax - w, vmax + w

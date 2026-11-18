@@ -1,5 +1,6 @@
 import json
 import time
+import urllib.error
 import urllib.request
 
 from rover.health import Health, throttle_flags
@@ -68,3 +69,18 @@ def test_health_event_every_period(tmp_path):
 
 def test_throttle_flags_none_and_zero():
     assert throttle_flags(None) == [] and throttle_flags(0) == []
+
+
+def test_debug_dumps_are_served_by_name():
+    srv = StatusServer(host="127.0.0.1", port=0)
+    try:
+        srv.debug["ping"] = lambda: [{"edges": [["R", 750], ["F", 3650]]}]
+        code, ctype, body = get(srv.port, "/debug/ping")
+        assert code == 200 and json.loads(body)[0]["edges"][1] == ["F", 3650]
+        try:
+            get(srv.port, "/debug/nothing")
+            assert False, "an unknown dump must be a 404"
+        except urllib.error.HTTPError as e:
+            assert e.code == 404
+    finally:
+        srv.close()

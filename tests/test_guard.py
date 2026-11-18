@@ -96,3 +96,19 @@ def test_stop_is_logged_at_once():
 def test_no_scanner_is_blind():
     g = ObstacleGuard(None)
     assert g.limit(1.0, 1.0, 0.0) == (BLIND_CAP, BLIND_CAP) and g.state == "blind"
+
+
+def test_nothing_is_logged_while_standing_still():
+    sc, log = StubScanner(), Log()
+    g = ObstacleGuard(sc, log)
+    t = 0.0
+    for d in (1.0, 0.4, None, 0.1):  # states change, but the command is 0,0 (e.g. explore looking)
+        for _ in range(15):
+            sc.reading = None if d is None else at(d, t)
+            g.limit(0.0, 0.0, t)
+            g.limit(0.3, -0.3, t)  # spinning in place: no forward motion either
+            t += 0.02
+    assert log.items == []
+    sc.reading = at(0.1, t)
+    g.limit(0.3, 0.3, t)
+    assert log.items[-1][1]["state"] == "stop"

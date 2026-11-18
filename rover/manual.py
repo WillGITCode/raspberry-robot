@@ -1,9 +1,9 @@
 from rover.command import DriveCommand
 
-SPEED_CAP = 0.3
-BOOST_CAP = 1.0
+SPEED_CAP = 0.6  # Boss, 2026-11-16, after the floor runs: the gearing is low, faster is safe
+BOOST_CAP = 0.85  # full duty (1.0) blinds the ping with motor noise; 0.85 reads cleanly (stand, 2026-11-16)
 BOOST_THRESHOLD = 0.5  # right trigger pulled past half
-INNER_DROP = 0.5  # left stick fully sideways: the inner side runs at half the outer side
+INNER_DROP = 0.7  # left stick fully sideways: the inner side runs at 30% of the outer (Boss: sharper)
 
 
 def car_mix(ly, lx):

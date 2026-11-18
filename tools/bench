@@ -14,8 +14,11 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   deploy                          pytest, lock, push HEAD, wait for rover.service, print the commit
   logs [--since 2m] [--follow-for 10s]   rover.service and deploy events, bounded
   status                          service state, deployed commit, who deployed
+  timeline [--since 15m]          what the robot did, one row each: modes, explore, guard, faults, power
+  tune [key=value ... | --list | --reset]   show/change the robot's settings file, then restart (no deploy)
   stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then "0 0" (the service keeps running)
+  mode <name> <seconds>           run a mode (explore) for the bench while the pad is idle; the service ends it (stand only)
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
   pad-check                       list evdev devices, then 20 s of live pad readings and mode_change events (read-only)
@@ -79,6 +82,41 @@ cmd_logs() {
   fi
 }
 
+# tune: /etc/rover/settings.toml on the Pi. Values are checked here (rover/settings.py) before anything is
+# written; a change restarts rover.service (the pad must press Start again).
+cmd_tune() {
+  if [ $# = 0 ]; then
+    remote 'cat /etc/rover/settings.toml 2>/dev/null || echo "(no settings file: all defaults)"'
+    return 0
+  fi
+  case $1 in
+    --list) (cd "$ROOT" && "$PYTHON" -m rover.settings --list); return 0 ;;
+    --reset) run remote 'sudo rm -f /etc/rover/settings.toml && sudo systemctl restart rover'; echo "settings file removed; defaults after restart"; return 0 ;;
+  esac
+  current=""
+  [ $DRY = 1 ] || current=$(remote 'cat /etc/rover/settings.toml 2>/dev/null' || true)
+  new=$(printf '%s' "$current" | (cd "$ROOT" && "$PYTHON" -m rover.settings --merge "$@")) || exit 2
+  if [ $DRY = 1 ]; then echo "+ write /etc/rover/settings.toml on the Pi:"; printf '%s\n' "$new"; echo "+ restart rover"; return 0; fi
+  printf '%s\n' "$new" | remote 'sudo mkdir -p /etc/rover && sudo tee /etc/rover/settings.toml >/dev/null && sudo systemctl restart rover'
+  printf '%s\n' "$new"
+  sleep 2
+  remote 'systemctl is-active rover; journalctl -u rover -o cat -n 30 --no-pager | grep -E "\"(settings|fault)\"" | tail -n 5' || true
+}
+
+# timeline: the journal as JSON, folded on this machine by tools/timeline.py
+cmd_timeline() {
+  since=15m
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --since) since=$2; shift 2 ;;
+      *) usage ;;
+    esac
+  done
+  [[ "$since" =~ ^[0-9]+[smhd]$ ]] || usage
+  remote journalctl --since "-$since" -o json --no-pager _SYSTEMD_UNIT=rover.service + SYSLOG_IDENTIFIER=rover-deploy \
+    | python3 "$ROOT/tools/timeline.py"
+}
+
 cmd_status() {
   remote 'echo "service: $(systemctl is-active rover)"
     echo "last event: $(journalctl -u rover -o cat -n 1 --no-pager)"
@@ -108,6 +146,24 @@ try:
 finally:
     if final == "1":
         s.sendto(b"0 0", "/run/rover/drive.sock")
+PY
+}
+
+# mode: the service runs the mode while no person drives, and ends it itself at the deadline (max 120 s),
+# so a dropped ssh never leaves it running; pad input, Back or `mode idle` end it sooner. It moves the
+# wheels: stand only.
+cmd_mode() {
+  [ $# = 2 ] || usage
+  [[ "$1" =~ ^[a-z]+$ ]] && [[ "$2" =~ ^[0-9]+$ ]] && [ "$2" -ge 1 ] && [ "$2" -le 120 ] || usage
+  remote sudo python3 - "$1" "$2" <<'PY'
+import socket, sys, time
+name, secs = sys.argv[1], int(sys.argv[2])
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+s.sendto(f"mode {name} {secs}".encode(), "/run/rover/drive.sock")
+try:
+    time.sleep(secs)
+finally:
+    s.sendto(b"mode idle", "/run/rover/drive.sock")
 PY
 }
 
@@ -396,7 +452,7 @@ cmd_loop_check() {
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
-  deploy|logs|status|stop|drive|snap|clip) "cmd_$c" "$@" ;;
+  deploy|logs|status|stop|drive|mode|snap|clip|timeline|tune) "cmd_$c" "$@" ;;
   pad-check) cmd_pad_check "$@" ;;
   ping-check) cmd_ping_check "$@" ;;
   servo-check) cmd_servo_check "$@" ;;

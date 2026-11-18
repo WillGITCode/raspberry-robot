@@ -1,6 +1,6 @@
 from rover.loop import FakeClock
 from rover.ping import FakePing
-from rover.scanner import AHEAD_PERIOD_S, RELAX_AFTER_S, SWEEP, Scanner
+from rover.scanner import AHEAD_PERIOD_S, SWEEP, Scanner
 from rover.servo import AHEAD, FakeServo, pulse_us
 
 
@@ -17,7 +17,7 @@ def test_servo_pulses_follow_the_old_formula():
     assert pulse_us(0) == pulse_us(10) and pulse_us(200) == pulse_us(170)  # clamped
 
 
-def test_ahead_centres_once_then_pings_at_25_hz_and_relaxes():
+def test_ahead_centres_once_then_pings_at_25_hz_with_the_servo_holding():
     clock, servo = FakeClock(), FakeServo()
     ping = FakePing(clock, distance=0.8)
     s = Scanner(ping, servo)
@@ -26,8 +26,7 @@ def test_ahead_centres_once_then_pings_at_25_hz_and_relaxes():
     assert all(r.angle == AHEAD and r.distance == 0.8 for r in readings)
     rate = len(readings) / (2.0 - 0.5)  # the first move settles in under 0.5 s
     assert 20 <= rate <= 1 / AHEAD_PERIOD_S + 1
-    assert servo.relaxed  # held still past RELAX_AFTER_S: pulses off
-    assert RELAX_AFTER_S < 2.0
+    assert not servo.relaxed  # it holds actively: vibration back-drove an unpowered servo
 
 
 def test_sweep_visits_every_angle_in_order():
@@ -67,7 +66,8 @@ def test_a_failed_ping_never_hides_the_valid_ones_before_it():
     assert s.ahead(clock.now(), max_age=0.5) is None  # now it is blind
     stats = s.take_stats()
     assert stats["pings"] >= 4 and stats["ping_errors"]["no_echo"] >= 2
-    assert s.take_stats() == {"pings": 0, "ping_errors": {}}
+    again = s.take_stats()
+    assert again["pings"] == 0 and again["ping_errors"] == {}
 
 
 def test_ahead_takes_the_nearest_of_two_echoes():
@@ -76,3 +76,28 @@ def test_ahead_takes_the_nearest_of_two_echoes():
     s = Scanner(FakePing(clock, distance=lambda: next(flip)), FakeServo())
     run(s, clock, 1.0)
     assert s.ahead(clock.now(), max_age=0.5).distance == 0.48
+
+
+def test_a_missed_rise_is_pinged_again_at_once_and_counted():
+    clock, servo = FakeClock(), FakeServo()
+    seq = iter(["missed_rise", 0.9] + [0.9] * 100)
+    s = Scanner(FakePing(clock, distance=lambda: next(seq)), servo)
+    readings = run(s, clock, 1.0)
+    assert readings and all(r.distance == 0.9 for r in readings)  # the miss never became a reading
+    stats = s.take_stats()
+    assert stats["ping_errors"] == {"missed_rise": 1} and stats["flip_us_max"] == 900  # the slow flip shows
+
+
+def test_flip_times_reach_the_health_stats():
+    from rover.ping import Echo
+
+    class FlipPing(FakePing):
+        def poll(self):
+            e = super().poll()
+            return None if e is None else Echo(e.distance, e.time, e.error, 150.0)
+
+    clock = FakeClock()
+    s = Scanner(FlipPing(clock, distance=1.0), FakeServo())
+    run(s, clock, 1.0)
+    stats = s.take_stats()
+    assert stats["flip_us_p50"] == 150 and stats["flip_us_max"] == 150

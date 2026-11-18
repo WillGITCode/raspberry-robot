@@ -9,12 +9,15 @@ gpiozero cannot do this: DistanceSensor needs two pins, and its flip-and-time pa
 broken on lgpio since kernel 6.6 (gpiozero #1135).
 """
 import time
+from collections import deque
 from dataclasses import dataclass
 
 CHIP = "/dev/gpiochip0"
 GPIO = 23  # BOARD 16
 SPEED_OF_SOUND_M_S = 343.0  # at about 20 C
 TRIGGER_NS = 10_000
+START_MIN_NS = 650_000  # the echo starts this long after the trigger: 752-759 us in 937 bench pings
+START_MAX_NS = 900_000  # (datasheet hold-off 750 us); a start outside this window is noise
 MIN_WIDTH_S = 100e-6  # the sensor's shortest echo is 115 us (2 cm); shorter is a glitch
 MAX_WIDTH_S = 19e-3  # its longest is 18.5 ms: nothing within about 3 m
 ECHO_TIMEOUT_S = 0.03
@@ -25,7 +28,7 @@ class Echo:
     distance: float | None  # metres to the nearest echo; None when there is no reading
     time: float  # clock time the ping was triggered
     error: str | None = None  # why there is no reading
-    flip_us: float | None = None  # trigger end to input ready (bench probe)
+    flip_us: float | None = None  # trigger end to input ready (bench probe, health)
 
 
 def width_to_distance(width_s):
@@ -33,19 +36,24 @@ def width_to_distance(width_s):
 
 
 def echo_from_edges(edges, trigger_ns, t, flip_us=None):
-    """edges: [(rising, timestamp_ns)] in order. An Echo, or None while the echo is still due."""
-    rise = None
+    """edges: [(rising, timestamp_ns)] in order. An Echo, or None while the echo is still due.
+
+    The kernel stamps each edge's time in the interrupt (exact) and names it by reading the pin a
+    little later. With the motors at full speed, noise adds many short spikes; they come out
+    "falling" (the pin is low again by the time it is read), scattered from 0.2 ms to 19 ms. The
+    real echo always starts with a rising edge 752-759 us after the trigger (937 bench pings). So the
+    start is the first rising edge in START_MIN_NS..START_MAX_NS (none: "lost_start", no reading,
+    never a guess), and the end is the first falling edge at least MIN_WIDTH_S after it."""
+    start = next((ts for rising, ts in edges
+                  if rising and trigger_ns + START_MIN_NS <= ts <= trigger_ns + START_MAX_NS), None)
+    if start is None:
+        if edges and edges[-1][1] > trigger_ns + START_MAX_NS:
+            return Echo(None, t, "lost_start", flip_us)
+        return None  # the start may still come
     for rising, ts in edges:
-        if ts < trigger_ns:
-            continue
-        if rising:
-            rise = rise if rise is not None else ts
-            continue
-        if rise is None:
-            return Echo(None, t, "missed_rise", flip_us)  # the echo began before the pin was an input
-        width = (ts - rise) / 1e9
-        if width < MIN_WIDTH_S:
-            return Echo(None, t, "glitch", flip_us)
+        if ts <= start or rising or ts - start < MIN_WIDTH_S * 1e9:
+            continue  # noise inside the echo reads "rising" (the pin is still high); or too short
+        width = (ts - start) / 1e9
         if width > MAX_WIDTH_S:
             return Echo(None, t, "too_long", flip_us)
         return Echo(width_to_distance(width), t, None, flip_us)
@@ -66,6 +74,7 @@ class GpiodPing:
         self._high = gpiod.LineSettings(direction=Direction.OUTPUT, output_value=Value.ACTIVE)
         self.req = gpiod.request_lines(chip, consumer="rover-ping", config={gpio: self._input})
         self._pending = None  # (trigger_ns, t, flip_us, edges)
+        self.recent = deque(maxlen=40)  # raw edges of the last pings, for /debug/ping
 
     @property
     def busy(self):
@@ -101,6 +110,9 @@ class GpiodPing:
             echo = Echo(None, t, "no_fall" if edges else "no_echo", flip_us)
         if echo is not None:
             self._pending = None
+            self.recent.append({
+                "t": round(t, 3), "flip_us": round(flip_us), "distance": echo.distance, "error": echo.error,
+                "edges": [("R" if rising else "F", round((ts - trigger_ns) / 1000)) for rising, ts in edges]})
         return echo
 
     def _drain(self):
@@ -141,6 +153,8 @@ class FakePing:
         if self.clock.now() - t < (self.delay if d is not None else ECHO_TIMEOUT_S):
             return None
         self._pending = None
+        if d == "missed_rise":  # tests: a ping whose rise came before the flip to input
+            return Echo(None, t, "missed_rise", 900.0)
         return Echo(d, t, None if d is not None else "no_echo")
 
     def close(self):

@@ -6,20 +6,17 @@ import time
 
 from rover.drive_input import DEFAULT_PATH, DriveInput
 from rover.events import Events
-from rover.guard import ObstacleGuard
 from rover.health import Health, ThrottleReader
-from rover.loop import TickLoop
 from rover.motors import Motors
+from rover.robot import Robot
 from rover.scanner import Scanner
 
 try:
-    from rover.modes import ModeManager
     from rover.pad import Pad
 except ImportError:  # python-evdev missing: run without a pad, socket input still drives
-    ModeManager = Pad = None
+    Pad = None
 
 PERIOD_S = 0.02
-SNAPSHOT_EVERY = 5  # ticks: the status page gets 10 snapshots a second
 
 
 class RealClock:
@@ -52,85 +49,20 @@ def current_commit():
         return "unknown"
 
 
-def snapshot(now, commit, manager, pad_state, loop, guard, scanner, health, pose=None):
-    """What the status page shows. Built in the loop's thread; published as one new dict."""
-    cmd = loop.command
-    return {
-        "t": round(now, 3),
-        "commit": commit,
-        "mode": manager.name if manager is not None else None,
-        "latched": manager.latched if manager is not None else None,
-        "pad_lost": pad_state.lost if pad_state is not None else None,
-        "command": None if cmd is None else {
-            "left": cmd.left, "right": cmd.right, "source": cmd.source, "age": round(now - cmd.time, 3)},
-        "output": {"left": loop.output[0], "right": loop.output[1]},
-        "stale": loop.stale,
-        "guard": {"state": guard.state, "distance": guard.distance, "limit": guard.limit_value},
-        "ranges": [] if scanner is None else [
-            {"angle": r.angle, "distance": r.distance, "error": r.error, "age": round(now - r.time, 3)}
-            for r in scanner.latest.values()],
-        "health": health.last if health is not None else None,
-        "pose": pose.odo.pose() if pose is not None else None,
-    }
-
-
 def serve(motors, clock, notifier, events, drive_input, ticks=None,
           period=PERIOD_S, sleep=time.sleep, commit="unknown", pad=None,
           scanner=None, health=None, status=None, pose=None):
-    """Run the tick loop until `ticks` ticks are done (forever if None)."""
-    guard = ObstacleGuard(scanner, events)
-    loop = TickLoop(motors, clock, guard=guard)
+    """Run the robot's tick at `period` until `ticks` ticks are done (forever if None): the timing,
+    the systemd watchdog and the overrun check. What one tick does is rover.robot.Robot."""
+    robot = Robot(motors, clock, events, drive_input, pad=pad, scanner=scanner, pose=pose,
+                  status=status, health=health, commit=commit)
     events.emit("start", commit=commit)
     notifier.notify("READY=1")
-    manager = ModeManager(events) if pad is not None else None
-    was_stale = True
-    socket_cmd = None
-    last_pad = None
-    pad_state = None
     n = 0
     try:
         while ticks is None or n < ticks:
             started = clock.now()
-            for item in drive_input.poll():
-                if isinstance(item, Exception):
-                    events.emit("fault", error=f"bad drive input: {item}")
-                    continue
-                socket_cmd = item
-                if manager is None:
-                    loop.submit(item)
-                events.emit("drive", left=item.left, right=item.right, source=item.source)
-            if manager is not None:
-                # a live pad mode wins; with no pad command the socket drives, except Back always stops
-                pad_state = pad.poll()
-                cmd = manager.update(pad_state, clock.now())
-                if pad_state.back:
-                    socket_cmd = None
-                key = None if cmd is None else (cmd.left, cmd.right, cmd.source)
-                if key is not None and key != last_pad:
-                    events.emit("drive", left=cmd.left, right=cmd.right, source=cmd.source)
-                last_pad = key
-                loop.submit(cmd if cmd is not None else socket_cmd)
-            if scanner is not None:
-                try:
-                    scanner.set_pattern(getattr(manager.mode, "scan", "ahead") if manager is not None else "ahead")
-                    scanner.tick(clock.now())  # before the motors, so the guard sees this tick's echo
-                except Exception as e:  # degrade, don't crash: the guard goes blind and caps forward speed
-                    events.emit("fault", error=f"scanner failed, guard is blind: {e!r}")
-                    scanner.close()
-                    scanner = guard.scanner = None
-            loop.tick()
-            if pose is not None:
-                try:
-                    pose.tick(clock.now(), loop.output)
-                except Exception as e:  # odometry is never worth a crash
-                    events.emit("fault", error=f"odometry failed: {e!r}")
-                    pose.close()
-                    pose = None
-            if loop.stale and not was_stale:
-                events.emit("deadman_stop")
-            was_stale = loop.stale
-            if status is not None and n % SNAPSHOT_EVERY == 0:
-                status.publish(snapshot(clock.now(), commit, manager, pad_state, loop, guard, scanner, health, pose))
+            robot.tick()
             elapsed = clock.now() - started
             if elapsed > period:
                 events.emit("tick_overrun", elapsed=elapsed, period=period)
@@ -144,6 +76,7 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
         events.emit("fault", error=repr(e))
         raise
     finally:
+        robot.close()
         motors.coast()
         events.emit("stop")
 
@@ -198,14 +131,34 @@ def start_status(events):
         return None
 
 
+def apply_settings(events, path=None):
+    """The tunables in /etc/rover/settings.toml (or $ROVER_SETTINGS), before anything is built."""
+    from rover import settings
+
+    try:
+        values = settings.load(path or os.environ.get("ROVER_SETTINGS", settings.PATH))
+    except ValueError as e:
+        events.emit("fault", error=str(e))
+        return {}
+    applied, errors = settings.apply(values)
+    for error in errors:
+        events.emit("fault", error=f"setting ignored: {error}")
+    if applied:
+        events.emit("settings", **applied)
+    return applied
+
+
 def main():
     clock = RealClock()
     events = Events(sys.stdout, clock)
+    apply_settings(events)
     motors = Motors()
     drive_input = DriveInput(os.environ.get("ROVER_DRIVE_SOCKET", DEFAULT_PATH), clock)
     scanner = start_scanner(events, clock)
     status = start_status(events)
     pose = start_pose(events)
+    if status is not None and scanner is not None and hasattr(scanner.ping, "recent"):
+        status.debug["ping"] = lambda: list(scanner.ping.recent)  # copied in the server's thread
     health = Health(events, ThrottleReader(), extras=[scanner.take_stats] if scanner is not None else [])
     try:
         serve(motors, clock, SdNotifier(), events, drive_input, commit=current_commit(),

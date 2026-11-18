@@ -6,8 +6,9 @@ class Ramp:
     """Limits how fast each side speeds up. Slowing, stopping and coasting are immediate,
     and a change of direction goes through zero first. Soft starts cut current spikes."""
 
-    def __init__(self, accel_per_s=ACCEL_PER_S, period=PERIOD_S):
-        self.accel, self.period = accel_per_s, period
+    def __init__(self, accel_per_s=None, period=PERIOD_S):
+        self.accel = accel_per_s if accel_per_s is not None else ACCEL_PER_S  # read now: settings may set it
+        self.period = period
         self.reset()
 
     def reset(self):
