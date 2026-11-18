@@ -160,7 +160,7 @@ def _bench_run(motors, pad_script, inputs, ticks, distance=0.8):
     clock, out = FakeClock(), io.StringIO()
     servo = FakeServo()
     scanner = Scanner(FakePing(clock, distance=distance), servo)
-    pad = ScriptedPad(pad_script)
+    pad = ScriptedPad(pad_script) if pad_script is not None else None
 
     class Input(ScriptedInput):
         def poll(self):
@@ -181,25 +181,25 @@ def _bench_run(motors, pad_script, inputs, ticks, distance=0.8):
     return events, levels
 
 
-def test_bench_runs_explore_while_the_pad_is_idle_and_ends_it_at_the_deadline(motors):
-    events, levels = _bench_run(motors, {0: REST}, {5: [("explore", 2.0)]}, ticks=200)
+def test_bench_runs_explore_without_a_pad_and_ends_it_at_the_deadline(motors):
+    events, levels = _bench_run(motors, None, {5: [("explore", 2.0)]}, ticks=200)
     bench = [e for e in events if e["event"] == "bench_mode"]
     assert bench[0]["mode"] == "explore" and bench[-1]["reason"] == "deadline"
     assert any(l > 0 for l, _ in levels[40:100])  # it cruised
     assert levels[-1] == (0, 0)  # and stopped after its 2 s
-    assert not any(e["event"] == "mode_change" for e in events)  # the pad stayed idle and latched
 
 
-def test_people_and_back_end_a_bench_mode(motors):
-    events, _ = _bench_run(motors, {0: REST, 60: START, 61: REST}, {5: [("explore", 30.0)]}, ticks=100)
-    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "pad"
-    events, _ = _bench_run(motors, {0: REST, 60: PadState(back=True), 61: REST}, {5: [("explore", 30.0)]},
-                           ticks=100)
+def test_a_latched_pad_refuses_bench_modes_and_people_end_them(motors):
+    events, levels = _bench_run(motors, {0: REST}, {5: [("explore", 30.0)]}, ticks=100)  # GH #29
+    assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "latched"
+    assert any(e["event"] == "bench_refused" for e in events)
+    assert all(lv == (0, 0) for lv in levels)
+    events, _ = _bench_run(motors, {0: REST, 3: START, 4: REST}, {5: [("explore", 30.0)]}, ticks=100)
     assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "pad"
 
 
 def test_bench_cannot_run_manual_and_mode_idle_ends_it(motors):
-    events, _ = _bench_run(motors, {0: REST}, {5: [("manual", 5.0)], 10: [("explore", 5.0)],
+    events, _ = _bench_run(motors, None, {5: [("manual", 5.0)], 10: [("explore", 5.0)],
                                                40: [("idle", 1.0)]}, ticks=60)
     assert any(e["event"] == "fault" and "manual" in e["error"] for e in events)
     assert [e for e in events if e["event"] == "bench_mode"][-1]["reason"] == "idle"

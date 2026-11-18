@@ -26,22 +26,26 @@ def bench(left=0.4, right=0.4, t=0.0):
 def test_the_bench_drives_only_while_people_give_no_command():
     a = Arbiter(Log(), ModeManager(Log()))
     a.receive(bench(), 0.0)
-    assert a.decide(0.0, REST, Sense()).source == "bench" and a.source == "bench_drive"  # pad latched
+    assert a.decide(0.0, REST, Sense()) is None and a.bench_drive is None  # pad latched: refused (GH #29)
+    a.receive(bench(), 0.01)
     a.decide(0.02, START, Sense())  # people arm the pad: manual
     cmd = a.decide(0.04, REST, Sense())
     assert cmd.source == "person" and (cmd.left, cmd.right) == (0.0, 0.0) and a.source == "pad"
 
 
-def test_back_clears_the_bench_drive_and_ends_a_bench_mode():
+def test_a_latched_pad_ends_a_bench_mode_and_drive():
     log = Log()
     a = Arbiter(log, ModeManager(log))
     a.receive(ModeRequest("explore", 10.0, "bench", 0.0), 0.0)
     assert a.mode_name == "bench:explore"
-    a.decide(0.02, REST, Sense())
-    assert a.source == "bench_mode"
-    a.decide(0.04, BACK, Sense())
-    assert a.bench is None and a.bench_drive is None and a.mode_name == "idle"
-    assert [f.get("reason") for e, f in log.items if e == "bench_mode"][-1] == "pad"
+    assert a.decide(0.02, REST, Sense()) is None and a.source is None
+    assert a.bench is None and a.mode_name == "idle"
+    assert [f.get("reason") for e, f in log.items if e == "bench_mode"][-1] == "latched"
+    a.decide(0.04, START, Sense())
+    a.decide(0.06, BACK, Sense())  # Back latches again
+    a.receive(bench(), 0.08)
+    assert a.decide(0.08, REST, Sense()) is None and a.bench_drive is None
+    assert any(e == "bench_refused" for e, _ in log.items)
 
 
 def test_bench_items_replace_each_other():

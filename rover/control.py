@@ -5,7 +5,7 @@
 2. People. The pad's mode drives whenever it gives a command: manual driving, or a mode people
    started with a button, such as explore (the robot drives then, on people's say-so).
 3. Agents. Today that is the bench: a bench mode or a socket drive, and only while people give no
-   command. Voice (people) and agent control over MCP plug in here, each at its place in this order.
+   command and the pad is armed (Start pressed, not latched; GH #29). Voice (people) and agent control over MCP plug in here, each at its place in this order.
 
 The arbiter only picks a command. It never touches hardware, and the safety chain in rover.loop
 (deadman, obstacle guard, ramp) still filters whatever it picks.
@@ -83,6 +83,13 @@ class Arbiter:
                 self.source = "pad"
                 self._note(cmd)
                 return cmd
+            if self.manager.latched:  # GH #29: the stop holds against the bench too; only Start re-arms
+                if self.bench_drive is not None or self.bench is not None:
+                    self.events.emit("bench_refused", reason="latched")
+                self.bench_drive = None
+                self._end_bench("latched")
+                self.source = None
+                return None
         if self.bench is not None:
             if self.bench.finished(now):
                 self._end_bench("deadline" if now >= self.bench.deadline else "mode")
