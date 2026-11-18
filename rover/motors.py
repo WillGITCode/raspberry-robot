@@ -1,6 +1,6 @@
 from gpiozero import DigitalOutputDevice, PWMOutputDevice
 
-# BOARD pins from src/state/robot_state_machine.py
+# BOARD pins from legacy/src/state/robot_state_machine.py
 DRIVE_PINS = (18, 11, 13, 15)  # left fwd, left back, right fwd, right back
 ENABLE_PINS = (32, 33)  # left, right
 PWM_HZ = 100
