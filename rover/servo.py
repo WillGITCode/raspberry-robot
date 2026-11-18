@@ -4,6 +4,7 @@ gpiozero on lgpio rounds PWM duty to whole percent, 200 us (about 18 degrees) fo
 servo uses lgpio directly. The pulse follows the old code's formula (duty 2 + angle/18 percent at
 50 Hz): 400 us + angle * 100/9 us, kept to 10-170 degrees, ahead at 95.
 """
+import os
 import time
 
 CHIP = 0
@@ -52,6 +53,49 @@ class LgpioServo:
             self.lg.gpio_free(self.h, self.gpio)
         finally:
             self.lg.gpiochip_close(self.h)
+
+
+class HwPwmServo:
+    """Pan servo on the kernel hardware PWM (sysfs), 50 Hz, pulse in ns; holds actively like LgpioServo.
+
+    Needs dtoverlay=pwm,pin=18,func=2 and the signal wire on BOARD 12 (hardware/wiring.md).
+    `root` is the sysfs class dir, a fake dir in checks.
+    """
+
+    PERIOD_NS = 20_000_000
+
+    def __init__(self, root="/sys/class/pwm", chip=0, channel=0):
+        self.chip = os.path.join(root, f"pwmchip{chip}")
+        if not os.path.isdir(self.chip):
+            raise RuntimeError(f"{self.chip} missing: add dtoverlay=pwm,pin=18,func=2 and reboot")
+        self.pwm = os.path.join(self.chip, f"pwm{channel}")
+        if not os.path.isdir(self.pwm):
+            self._write(os.path.join(self.chip, "export"), channel)
+        self._write(os.path.join(self.pwm, "period"), self.PERIOD_NS)
+        self.angle = None
+
+    @staticmethod
+    def _write(path, value):
+        with open(path, "w") as f:
+            f.write(str(value))
+
+    def move(self, angle):
+        self.angle = clamp(angle)
+        self._write(os.path.join(self.pwm, "duty_cycle"), pulse_us(self.angle) * 1000)
+        self._write(os.path.join(self.pwm, "enable"), 1)
+
+    def relax(self):
+        self._write(os.path.join(self.pwm, "enable"), 0)
+
+    def close(self):
+        self.relax()
+
+
+def make_servo():
+    """The servo backend: ROVER_SERVO=hwpwm for hardware PWM (BOARD 12), else lgpio on BOARD 5."""
+    if os.environ.get("ROVER_SERVO") == "hwpwm":
+        return HwPwmServo()
+    return LgpioServo()
 
 
 class FakeServo:

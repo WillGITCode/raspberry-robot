@@ -86,10 +86,10 @@ def start_scanner(events, clock):
     ping = None
     try:
         from rover.ping import GpiodPing
-        from rover.servo import LgpioServo
+        from rover.servo import make_servo
 
         ping = GpiodPing(clock=clock.now)
-        return Scanner(ping, LgpioServo())
+        return Scanner(ping, make_servo())
     except Exception as e:
         if ping is not None:
             ping.close()
