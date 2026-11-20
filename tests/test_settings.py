@@ -21,10 +21,10 @@ def test_apply_sets_module_constants_used_at_call_time(restore, tmp_path):
     from rover.pad import PadState
 
     f = tmp_path / "settings.toml"
-    f.write_text("speed_cap = 0.5\ninner_drop = 0.3\naccel_per_s = 8\n")
+    f.write_text("speed_cap = 0.5\ninner_drop = 0.3\naccel_per_s = 8\nturn_cap = 0.5\n")
     out = io.StringIO()
     applied = apply_settings(Events(out, FakeClock()), str(f))
-    assert applied == {"speed_cap": 0.5, "inner_drop": 0.3, "accel_per_s": 8.0}
+    assert applied == {"speed_cap": 0.5, "inner_drop": 0.3, "accel_per_s": 8.0, "turn_cap": 0.5}
     assert manual.SPEED_CAP == 0.5 and ramp.Ramp().accel == 8.0
     c = manual_command(PadState(lx=-1.0), 0.0)
     assert (c.left, c.right) == pytest.approx((0.35, 0.5))  # inner side at 1 - 0.3
