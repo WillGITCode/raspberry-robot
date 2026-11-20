@@ -57,6 +57,9 @@ def serve(motors, clock, notifier, events, drive_input, ticks=None,
     robot = Robot(motors, clock, events, drive_input, pad=pad, scanner=scanner, pose=pose,
                   status=status, health=health, commit=commit)
     events.emit("start", commit=commit)
+    if robot.arbiter.manager is None:  # GH #28: say so, never run padless in silence
+        why = "python-evdev missing" if Pad is None else "no pad given"
+        events.emit("no_pad", reason=why, note="no Back, no Start: only the bench drives")
     notifier.notify("READY=1")
     n = 0
     try:

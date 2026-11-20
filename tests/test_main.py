@@ -102,7 +102,7 @@ def test_fault_is_logged_and_motors_coast(motors, pins):
     with pytest.raises(RuntimeError):
         serve(motors, clock, FakeNotifier(), Events(out, clock), Boom(), ticks=1, sleep=lambda s: None)
     names = [json.loads(line)["event"] for line in out.getvalue().splitlines()]
-    assert names == ["start", "fault", "stop"]
+    assert names == ["start", "no_pad", "fault", "stop"]  # no pad given: GH #28
 
 
 def test_socket_input_feeds_commands(tmp_path):
