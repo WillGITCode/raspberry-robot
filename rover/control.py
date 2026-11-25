@@ -10,7 +10,8 @@
 The arbiter only picks a command. It never touches hardware, and the safety chain in rover.loop
 (deadman, obstacle guard, ramp) still filters whatever it picks.
 """
-from rover.drive_input import ModeRequest
+from rover.drive_input import ModeRequest, MoveRequest
+from rover.move import Mover
 
 try:
     from rover.modes import REGISTRY, Inputs, Sense
@@ -50,16 +51,23 @@ class Arbiter:
         self.events, self.manager = events, manager
         self.bench = None  # a BenchMode while the bench runs a mode
         self.bench_drive = None  # the last socket drive command (the deadman ages it out)
+        self.mover = Mover("bench")  # a capped move (rover.move) the bench asked for
         self.last_drive = None  # (left, right, source) of the last drive event, to log changes only
+        self.mover_kind = None
         self.source = None  # who drove on the last tick: pad, bench_mode, bench_drive or None
 
     def receive(self, item, now):
         """One item from the drive socket: a drive command, a mode request, or a parse error."""
         if isinstance(item, Exception):
             self.events.emit("fault", error=f"bad drive input: {item}")
+        elif isinstance(item, MoveRequest):
+            self._end_bench("move")
+            self.bench_drive = None
+            self._start_move(item)
         elif isinstance(item, ModeRequest):
             self._end_bench("idle" if item.name == "idle" else "replaced")
             self.bench_drive = None
+            self.mover.stop("replaced")
             if item.name == "idle":
                 return
             if item.name not in REGISTRY or item.name == "manual":
@@ -68,10 +76,11 @@ class Arbiter:
             self.bench = BenchMode(item, self.events)
         else:
             self._end_bench("drive")
+            self.mover.stop("replaced")
             self.bench_drive = item
             self._note(item)
 
-    def decide(self, now, pad_state, sense):
+    def decide(self, now, pad_state, sense, odo=None):
         """This tick's command. It may be None or stale: the deadman then coasts the motors."""
         if self.manager is not None:
             cmd = self.manager.update(pad_state, now, sense)
@@ -79,6 +88,7 @@ class Arbiter:
                 self.bench_drive = None
             if pad_state.back or cmd is not None:
                 self._end_bench("pad")
+                self._end_move("pad")
             if cmd is not None:
                 self.source = "pad"
                 self._note(cmd)
@@ -87,6 +97,7 @@ class Arbiter:
                 if self.bench_drive is not None or self.bench is not None:
                     self.events.emit("bench_refused", reason="latched")
                 self.bench_drive = None
+                self._end_move("latched")
                 self._end_bench("latched")
                 self.source = None
                 return None
@@ -98,9 +109,33 @@ class Arbiter:
                 cmd = self.bench.tick(Inputs(pad_state or PadState(), now, sense or Sense()))
                 self._note(cmd)
                 return cmd
+        if not self.mover.done:
+            cmd = self.mover.tick(now, odo)
+            if cmd is not None:
+                self.source = "bench_move"
+                self._note(cmd)
+                return cmd
+            self.events.emit("move", ended=self.mover_kind, reason=self.mover.reason)
         self.source = "bench_drive" if self.bench_drive is not None else None
         self._note(self.bench_drive)
         return self.bench_drive
+
+    def _start_move(self, req):
+        if self.manager is not None and self.manager.latched:
+            self.events.emit("bench_refused", reason="latched")
+            return
+        try:
+            getattr(self.mover, req.kind)(*req.args)
+        except (TypeError, ValueError) as e:
+            self.events.emit("fault", error=f"bad move: {e}")
+            return
+        self.mover_kind = req.kind
+        self.events.emit("move", kind=req.kind, args=list(req.args))
+
+    def _end_move(self, reason):
+        if not self.mover.done:
+            self.mover.stop(reason)
+            self.events.emit("move", ended=self.mover_kind, reason=reason)
 
     def _note(self, cmd):
         """Emit a `drive` event when the command differs from the last one emitted (50 Hz stays quiet)."""
@@ -125,6 +160,7 @@ class Arbiter:
         return self.manager.name if self.manager is not None else None
 
     def close(self):
+        self._end_move("stop")
         self._end_bench("stop")
 
     def _end_bench(self, reason):

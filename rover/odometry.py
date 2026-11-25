@@ -11,7 +11,8 @@ from rover.encoders import M_PER_EDGE
 
 class Odometry:
     def __init__(self, track_m=None, m_per_edge=M_PER_EDGE):
-        self.track_m, self.m_per_edge = track_m, m_per_edge
+        self.track_m = track_m
+        self.m_per_edge = tuple(m_per_edge) if isinstance(m_per_edge, (tuple, list)) else (m_per_edge, m_per_edge)
         self.x = self.y = self.heading = 0.0
         self.distance = 0.0  # total path length, metres
         self.speed = (0.0, 0.0)  # m/s per side, signed
@@ -22,8 +23,8 @@ class Odometry:
         for i, o in enumerate(output):
             if o:
                 self._sign[i] = 1.0 if o > 0 else -1.0  # coasting keeps the last direction
-        dl = edges[0] * self.m_per_edge * self._sign[0]
-        dr = edges[1] * self.m_per_edge * self._sign[1]
+        dl = edges[0] * self.m_per_edge[0] * self._sign[0]
+        dr = edges[1] * self.m_per_edge[1] * self._sign[1]
         if dt > 0:
             self.speed = (dl / dt, dr / dt)
         d = (dl + dr) / 2
@@ -53,14 +54,23 @@ class PoseTracker:
         from rover.imu import BiasCalibrator
 
         self.encoders, self.imu = encoders, imu
-        self.odo = Odometry(track_m)
+        from rover import drivetrain
+
+        self.odo = Odometry(track_m, (drivetrain.M_PER_EDGE_LEFT, drivetrain.M_PER_EDGE_RIGHT))
+        self.edges = None  # this tick's counts once read(), so the drivetrain and the pose see the same edges
         self.cal = (calibrator or BiasCalibrator()) if imu is not None else None
         self._t = None
+
+    def read(self):
+        """Read the encoders once for this tick (the kernel buffer holds ~16 edges a line). None: no encoders."""
+        self.edges = self.encoders.read() if self.encoders is not None else None
+        return self.edges
 
     def tick(self, now, output):
         dt = 0.0 if self._t is None else now - self._t
         self._t = now
-        edges = self.encoders.read() if self.encoders is not None else (0, 0)
+        edges = self.edges if self.edges is not None else (self.encoders.read() if self.encoders is not None else (0, 0))
+        self.edges = None
         yaw = None
         if self.imu is not None:
             raw = self.imu.raw_yaw_rate()

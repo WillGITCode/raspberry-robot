@@ -30,6 +30,22 @@ TUNABLES = {
     "explore_look_at_m": ("rover.explore", "LOOK_AT_M", 0.25, 1.5, "explore: stop and look at this distance"),
     "explore_open_m": ("rover.explore", "OPEN_M", 0.4, 2.0, "explore: ahead counts as open from here"),
     "explore_side_m": ("rover.explore", "SIDE_M", 0.2, 1.0, "explore: veer from a side closer than this"),
+    "edge_m_left": ("rover.drivetrain", "M_PER_EDGE_LEFT", 0.005, 0.02, "left wheel: metres per encoder edge (measured on the floor)"),
+    "edge_m_right": ("rover.drivetrain", "M_PER_EDGE_RIGHT", 0.005, 0.02, "right wheel: metres per encoder edge"),
+    "trim": ("rover.drivetrain", "TRIM", -0.2, 0.2, "open loop (no encoders): right duty x (1+trim), left x (1-trim); positive cures a drift right"),
+    "min_edge_ms": ("rover.encoders", "MIN_EDGE_MS", 0.5, 10.0, "encoders: drop an edge closer than this to the last (motor noise)"),
+    "max_speed_mps": ("rover.drivetrain", "MAX_SPEED_MPS", 0.2, 3.0, "speed at duty 1.0 (feed-forward scale)"),
+    "pi_kp": ("rover.drivetrain", "KP", 0.0, 3.0, "speed PI: duty per m/s of error"),
+    "pi_ki": ("rover.drivetrain", "KI", 0.0, 10.0, "speed PI: integral gain"),
+    "pi_max_correction": ("rover.drivetrain", "MAX_CORRECTION", 0.0, 0.6, "speed PI: most duty it may add or remove"),
+    "duty_max": ("rover.drivetrain", "DUTY_MAX", 0.3, 1.0, "speed PI: duty ceiling (unless commanded higher)"),
+    "fault_duty": ("rover.drivetrain", "FAULT_DUTY", 0.1, 1.0, "encoder fault: a side driven at least this hard ..."),
+    "fault_window_s": ("rover.drivetrain", "FAULT_WINDOW_S", 0.3, 5.0, "... with no edge for this long stops the robot"),
+    "max_edge_hz": ("rover.drivetrain", "MAX_EDGE_HZ", 50.0, 400.0, "encoder fault: more edges a second than this on one side"),
+    "move_max_s": ("rover.move", "MAX_S", 1.0, 60.0, "moves (drive/distance/turn): time cap"),
+    "move_max_m": ("rover.move", "MAX_M", 0.1, 10.0, "moves: path length cap"),
+    "move_speed": ("rover.move", "SPEED", 0.1, 0.8, "moves: default speed for distance()"),
+    "move_turn_rate": ("rover.move", "TURN_RATE", 0.2, 0.8, "moves: default spin speed for turn()"),
 }
 
 
