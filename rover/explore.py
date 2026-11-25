@@ -16,7 +16,7 @@ It drives as source "robot". The obstacle guard still limits every command, so e
 relies on itself alone to stop short. Without encoders it cannot tell a stall from a stop;
 odometry will add that.
 """
-from rover.command import DriveCommand
+from rover.move import drive_command
 from rover.servo import AHEAD
 
 CRUISE_SPEED = 0.3
@@ -124,7 +124,7 @@ class ExploreMode:
             self.events.emit("explore", state=state, **why)
 
     def _stop(self, now):
-        return DriveCommand(0.0, 0.0, "robot", now)
+        return drive_command(0.0, 0.0, "robot", now)
 
     def _give_up(self, now):
         """MAX_TURNS failed turns or re-blocks with no progress between: stuck; ask for idle."""
@@ -164,15 +164,15 @@ class ExploreMode:
                 self._go("back", now, reason="stuck", distance=round(ahead.distance, 3))
                 return self._stop(now)
             if left is not None and left < SIDE_M:  # left front close: veer right
-                return DriveCommand(CRUISE_SPEED, CRUISE_SPEED * VEER, "robot", now)
+                return drive_command(CRUISE_SPEED * (1 + VEER) / 2, -CRUISE_SPEED * (1 - VEER) / 2, "robot", now)  # veer right
             if right is not None and right < SIDE_M:
-                return DriveCommand(CRUISE_SPEED * VEER, CRUISE_SPEED, "robot", now)
-            return DriveCommand(CRUISE_SPEED, CRUISE_SPEED, "robot", now)
+                return drive_command(CRUISE_SPEED * (1 + VEER) / 2, CRUISE_SPEED * (1 - VEER) / 2, "robot", now)  # veer left
+            return drive_command(CRUISE_SPEED, 0.0, "robot", now)
         if self.state == "back":
             if now - self.since >= BACK_S:
                 self._go("look", now, reason="backed_off")
                 return self._stop(now)
-            return DriveCommand(-BACK_SPEED, -BACK_SPEED, "robot", now)
+            return drive_command(-BACK_SPEED, 0.0, "robot", now)
         if self.state == "wait":
             if ahead is not None or sense.ahead_recent is not None:
                 self._go("cruise", now)
@@ -202,6 +202,5 @@ class ExploreMode:
                     return self._give_up(now)
                 self._go("look", now, reason="turn_timeout")
                 return self._stop(now)
-            s = TURN_SPEED * self.turn_dir
-            return DriveCommand(-s, s, "robot", now)  # left: left side back, right side forward
+            return drive_command(0.0, TURN_SPEED * self.turn_dir, "robot", now)  # left: left side back, right forward
         return self._stop(now)

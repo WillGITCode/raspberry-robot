@@ -18,6 +18,7 @@ usage: tools/bench [--dry-run] <command>   (--dry-run prints the commands, runs 
   tune [key=value ... | --list | --reset]   show/change the robot's settings file, then restart (no deploy)
   stop                            stop rover.service, then rover-stop on the Pi (every motor pin low)
   drive <left> <right> <seconds>  feed the drive input for <seconds>, then "0 0" (the service keeps running)
+  move distance <m> | turn <deg> | drive <speed> <turn> <seconds>   one capped move (stand only; needs odometry)
   mode <name> <seconds>           run a mode (explore) for the bench while the pad is idle; the service ends it (stand only)
   snap                            JPEG from the desktop C920 to .bench/snaps/<time>.jpg, prints the path
   clip <seconds>                  MP4 plus a contact-sheet JPEG of its frames, prints both paths
@@ -172,6 +173,22 @@ PY
 cmd_drive() {
   [ $# = 3 ] || usage
   feed "$1" "$2" "$3" 1
+}
+
+# move: one capped move (rover.move: time cap 10 s, distance cap 3 m) by the service; Back, the pad or any
+# drive ends it. The service logs a `move` event with the reason it ended. Moves the wheels: stand only.
+cmd_move() {
+  case "${1:-}" in
+    distance|turn) [ $# -ge 2 ] && [ $# -le 3 ] || usage ;;
+    drive) [ $# -ge 3 ] && [ $# -le 4 ] || usage ;;
+    *) usage ;;
+  esac
+  for a in "${@:2}"; do [[ "$a" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || usage; done
+  remote sudo python3 - "$@" <<'PY'
+import socket, sys
+s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+s.sendto(("move " + " ".join(sys.argv[1:])).encode(), "/run/rover/drive.sock")
+PY
 }
 
 # The C920 is found by name; BENCH_CAMERA_INPUT overrides the ffmpeg input args (e.g. a synthetic lavfi source)
@@ -452,7 +469,7 @@ cmd_loop_check() {
 [ $# -ge 1 ] || usage
 c=$1; shift
 case $c in
-  deploy|logs|status|stop|drive|mode|snap|clip|timeline|tune) "cmd_$c" "$@" ;;
+  deploy|logs|status|stop|drive|move|mode|snap|clip|timeline|tune) "cmd_$c" "$@" ;;
   pad-check) cmd_pad_check "$@" ;;
   ping-check) cmd_ping_check "$@" ;;
   servo-check) cmd_servo_check "$@" ;;

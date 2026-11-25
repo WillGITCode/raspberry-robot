@@ -30,6 +30,9 @@ class SimPose:
     def __init__(self, sim):
         self.sim, self.odo = sim, self
 
+    def read(self):
+        return None  # no encoders in the sim: the drivetrain runs open loop
+
     def tick(self, now, output):
         pass
 
